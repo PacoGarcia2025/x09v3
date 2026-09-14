@@ -1,5 +1,20 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, Terminal, Globe, Github, Server, Shield, Sparkles, Download, ExternalLink } from 'lucide-react';
+import {
+  X,
+  Copy,
+  Check,
+  Terminal,
+  Globe,
+  Github,
+  Server,
+  Shield,
+  Sparkles,
+  Database,
+  Cloud,
+  ArrowRight,
+  CheckCircle2,
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface PublishModalProps {
   isOpen: boolean;
@@ -12,8 +27,16 @@ export const PublishModal: React.FC<PublishModalProps> = ({
   onClose,
   projectName = 'Studio x09',
 }) => {
-  const [activeTab, setActiveTab] = useState<'vps' | 'github' | 'domain' | 'quick'>('quick');
+  const { activeProject, updateProject, checkSubdomainAvailable, integrations } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<'subdomain' | 'vps' | 'cloudflare' | 'supabase' | 'github'>('subdomain');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Subdomain chooser state
+  const initialSub = activeProject?.subdomain || 'meu-site';
+  const [chosenSubdomain, setChosenSubdomain] = useState<string>(initialSub);
+  const [subdomainSaved, setSubdomainSaved] = useState<boolean>(false);
+  const [subdomainError, setSubdomainError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -23,81 +46,131 @@ export const PublishModal: React.FC<PublishModalProps> = ({
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
+  const handleSubdomainChange = (val: string) => {
+    const clean = val.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    setChosenSubdomain(clean);
+    if (!clean || clean.length < 3) {
+      setSubdomainError('Mínimo 3 caracteres alfanuméricos');
+      return;
+    }
+    const isAvail = checkSubdomainAvailable(clean, activeProject?.id);
+    if (!isAvail) {
+      setSubdomainError('Este subdomínio já está reservado');
+    } else {
+      setSubdomainError(null);
+    }
+  };
+
+  const handleConfirmSubdomain = () => {
+    if (subdomainError || !chosenSubdomain) return;
+    if (activeProject) {
+      updateProject(activeProject.id, {
+        subdomain: chosenSubdomain,
+        status: 'published',
+      });
+    }
+    setSubdomainSaved(true);
+    setTimeout(() => setSubdomainSaved(false), 2500);
+  };
+
   const gitCommands = `# 1. Inicialize ou conecte ao seu repositório no GitHub
 git init
 git add .
-git commit -m "feat: X09 Studio 2.0 rebuild from scratch"
+git commit -m "feat: X09 Studio 2.0 publish ${chosenSubdomain}.x09.com.br"
 git branch -M main
 git remote add origin https://github.com/SEU-USUARIO/studio-x09.git
 git push -u origin main --force`;
 
-  const vpsCommands = `# Conecte via SSH na sua VPS Hostinger (Ubuntu 22.04/24.04):
-ssh root@SEU_IP_HOSTINGER
+  const vpsWildcardNginx = `# Arquivo: /etc/nginx/sites-available/x09-subdomains
+# Permite que QUALQUER subdomínio criado no X09 funcione instantaneamente!
 
-# 1. Atualizar pacotes do sistema
-sudo apt update && sudo apt upgrade -y
-
-# 2. Instalar Node.js 20+, Nginx e Git
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs nginx git certbot python3-certbot-nginx
-
-# 3. Clonar seu repositório oficial do Studio x09
-cd /var/www
-git clone https://github.com/SEU-USUARIO/studio-x09.git
-cd studio-x09
-
-# 4. Instalar dependências e compilar produção
-npm install
-npm run build
-
-# 5. Configurar Nginx apontando para /var/www/studio-x09/dist
-sudo nano /etc/nginx/sites-available/studio-x09
-sudo ln -s /etc/nginx/sites-available/studio-x09 /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-
-# 6. Ativar SSL Grátis Let's Encrypt
-sudo certbot --nginx -d seudominio.com.br -d www.seudominio.com.br`;
-
-  const nginxConfig = `server {
+server {
     listen 80;
-    server_name seudominio.com.br www.seudominio.com.br;
+    server_name ~^(?<subdomain>.+)\\.x09\\.com\\.br$;
 
-    root /var/www/studio-x09/dist;
+    root /var/www/projects/$subdomain/dist;
     index index.html;
 
-    # Suporte a SPA (Single Page Application)
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Cache de alta performance para assets estáticos
-    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2|woff)$ {
+    # Cache de alta performance para CSS, JS e Imagens
+    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
     gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
+    gzip_types text/plain text/css application/json application/javascript text/xml;
 }`;
+
+  const vpsDeployScript = `# Conectar via SSH na sua VPS Hostinger:
+ssh root@${integrations.hostingerVpsIp}
+
+# 1. Criar diretório para o subdomínio ${chosenSubdomain}
+mkdir -p /var/www/projects/${chosenSubdomain}
+cd /var/www/projects/${chosenSubdomain}
+
+# 2. Clonar ou copiar os arquivos compilados da dist/
+git clone https://github.com/SEU-USUARIO/studio-x09.git .
+npm install
+npm run build
+
+# 3. Testar Nginx e aplicar
+sudo nginx -t && sudo systemctl reload nginx
+
+# O site já está disponível em:
+# https://${chosenSubdomain}.x09.com.br`;
+
+  const supabaseSqlSchema = `-- Schema Supabase para o Studio x09 (studio.x09.com.br)
+
+CREATE TABLE IF NOT EXISTS public.users_x09 (
+  id UUID PRIMARY KEY DEFAULT auth.uid(),
+  email TEXT NOT NULL UNIQUE,
+  full_name TEXT,
+  plan TEXT DEFAULT 'Pro',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.projects_x09 (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.users_x09(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  subdomain TEXT NOT NULL UNIQUE,
+  custom_domain TEXT,
+  category TEXT DEFAULT 'Sites',
+  status TEXT DEFAULT 'published',
+  site_data JSONB NOT NULL,
+  views_count INT DEFAULT 0,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Ativar Row Level Security
+ALTER TABLE public.projects_x09 ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Usuários acessam apenas seus próprios projetos"
+ON public.projects_x09 FOR ALL
+USING (auth.uid() = user_id);`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-4xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="px-6 py-4 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/50">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20 font-bold text-sm">
+              X09
             </div>
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                Publicação & Deploy: {projectName}
+                Publicar Projeto: {activeProject?.title || projectName}
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">
-                  Pronto para Produção
+                  studio.x09.com.br
                 </span>
               </h3>
               <p className="text-xs text-zinc-400">
-                Exporte para seu GitHub e publique na sua VPS Hostinger com SSL e Nginx.
+                Configure o subdomínio .x09.com.br, Cloudflare, VPS Hostinger e Supabase.
               </p>
             </div>
           </div>
@@ -109,229 +182,298 @@ sudo certbot --nginx -d seudominio.com.br -d www.seudominio.com.br`;
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-zinc-800 bg-zinc-900/20 px-6 pt-2 gap-2 text-xs font-semibold">
+        {/* Navigation Tabs */}
+        <div className="flex border-b border-zinc-800 bg-zinc-900/20 px-6 pt-2 gap-2 text-xs font-semibold overflow-x-auto">
           <button
-            onClick={() => setActiveTab('quick')}
-            className={`pb-2.5 px-3 border-b-2 flex items-center gap-2 transition-colors ${
-              activeTab === 'quick'
+            onClick={() => setActiveTab('subdomain')}
+            className={`pb-2.5 px-3 border-b-2 flex items-center gap-2 transition-colors shrink-0 ${
+              activeTab === 'subdomain'
                 ? 'border-purple-500 text-white'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <Sparkles className="w-4 h-4" />
-            Visão Geral
+            <Globe className="w-4 h-4 text-purple-400" />
+            1. Subdomínio .x09.com.br
           </button>
+
+          <button
+            onClick={() => setActiveTab('cloudflare')}
+            className={`pb-2.5 px-3 border-b-2 flex items-center gap-2 transition-colors shrink-0 ${
+              activeTab === 'cloudflare'
+                ? 'border-purple-500 text-white'
+                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Cloud className="w-4 h-4 text-amber-400" />
+            2. Cloudflare (Wildcard)
+          </button>
+
           <button
             onClick={() => setActiveTab('vps')}
-            className={`pb-2.5 px-3 border-b-2 flex items-center gap-2 transition-colors ${
+            className={`pb-2.5 px-3 border-b-2 flex items-center gap-2 transition-colors shrink-0 ${
               activeTab === 'vps'
                 ? 'border-purple-500 text-white'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <Server className="w-4 h-4" />
-            Hostinger VPS (SSH & Nginx)
+            <Server className="w-4 h-4 text-emerald-400" />
+            3. VPS Hostinger (Nginx)
           </button>
+
+          <button
+            onClick={() => setActiveTab('supabase')}
+            className={`pb-2.5 px-3 border-b-2 flex items-center gap-2 transition-colors shrink-0 ${
+              activeTab === 'supabase'
+                ? 'border-purple-500 text-white'
+                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Database className="w-4 h-4 text-blue-400" />
+            4. Banco Supabase
+          </button>
+
           <button
             onClick={() => setActiveTab('github')}
-            className={`pb-2.5 px-3 border-b-2 flex items-center gap-2 transition-colors ${
+            className={`pb-2.5 px-3 border-b-2 flex items-center gap-2 transition-colors shrink-0 ${
               activeTab === 'github'
                 ? 'border-purple-500 text-white'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Github className="w-4 h-4" />
-            GitHub Repository
-          </button>
-          <button
-            onClick={() => setActiveTab('domain')}
-            className={`pb-2.5 px-3 border-b-2 flex items-center gap-2 transition-colors ${
-              activeTab === 'domain'
-                ? 'border-purple-500 text-white'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Globe className="w-4 h-4" />
-            Domínio & DNS
+            5. Repositório GitHub
           </button>
         </div>
 
         {/* Tab Contents */}
-        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-          {activeTab === 'quick' && (
+        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5 text-xs">
+          {/* TAB 1: SUBDOMÍNIO .X09.COM.BR */}
+          {activeTab === 'subdomain' && (
             <div className="space-y-5">
-              <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-800/40 text-xs text-purple-200 leading-relaxed">
-                <span className="font-bold text-white block mb-1">Como funciona o fluxo do Studio x09:</span>
-                Você cria e edita o site aqui no X09 Studio. Em seguida, exporta para o seu repositório no GitHub. Na sua VPS Hostinger, basta dar um <code className="text-purple-300 font-mono">git pull && npm run build</code> via SSH para que as novidades vão para o ar instantaneamente!
+              <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-800/40 text-purple-200 leading-relaxed">
+                <span className="font-bold text-white block mb-1">Escolha o subdomínio deste projeto:</span>
+                O usuário e seus clientes poderão acessar este site imediatamente no endereço escolhido abaixo.
               </div>
 
-              <div className="grid sm:grid-cols-3 gap-3">
-                <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center mb-3">
-                    <Github className="w-4 h-4" />
-                  </div>
-                  <h4 className="font-bold text-sm text-white mb-1">1. Exportar para GitHub</h4>
-                  <p className="text-xs text-zinc-400">Envie o código completo reconstruído do zero direto para seu repo.</p>
-                </div>
-                <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center mb-3">
-                    <Server className="w-4 h-4" />
-                  </div>
-                  <h4 className="font-bold text-sm text-white mb-1">2. VPS Hostinger</h4>
-                  <p className="text-xs text-zinc-400">Clone via SSH no diretório /var/www e sirva com Nginx ultra-rápido.</p>
-                </div>
-                <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3">
-                    <Shield className="w-4 h-4" />
-                  </div>
-                  <h4 className="font-bold text-sm text-white mb-1">3. SSL Grátis</h4>
-                  <p className="text-xs text-zinc-400">Certbot configura HTTPS e renovação automática em 1 comando.</p>
-                </div>
-              </div>
+              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-4">
+                <label className="block font-semibold text-zinc-300">
+                  Defina o Subdomínio Oficial:
+                </label>
 
-              <div className="rounded-xl border border-zinc-800 p-4 bg-zinc-900/60">
-                <h4 className="font-bold text-sm text-white mb-2 flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-purple-400" />
-                  Comando rápido de compilação local
-                </h4>
-                <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800 font-mono text-xs text-zinc-300 flex items-center justify-between">
-                  <code>npm run build</code>
+                <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden focus-within:border-purple-500">
+                  <span className="pl-4 text-zinc-500 font-mono text-sm">https://</span>
+                  <input
+                    type="text"
+                    value={chosenSubdomain}
+                    onChange={(e) => handleSubdomainChange(e.target.value)}
+                    placeholder="nome-do-cliente"
+                    className="flex-1 bg-transparent p-3.5 text-purple-300 font-mono text-sm font-bold focus:outline-none"
+                  />
+                  <span className="pr-4 text-zinc-400 font-mono text-sm font-bold">
+                    .{integrations.domainBase}
+                  </span>
+                </div>
+
+                {subdomainError ? (
+                  <p className="text-rose-400 font-semibold">{subdomainError}</p>
+                ) : (
+                  <div className="flex items-center justify-between text-emerald-400 font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4" />
+                      https://{chosenSubdomain}.{integrations.domainBase} está disponível para publicação!
+                    </span>
+                  </div>
+                )}
+
+                <div className="pt-2 flex items-center gap-3">
                   <button
-                    onClick={() => copyToClipboard('npm run build', 'quick-build')}
-                    className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
+                    onClick={handleConfirmSubdomain}
+                    disabled={!!subdomainError}
+                    className="px-5 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
                   >
-                    {copiedKey === 'quick-build' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    {subdomainSaved ? <Check className="w-4 h-4 text-emerald-300" /> : <Sparkles className="w-4 h-4" />}
+                    <span>{subdomainSaved ? 'Subdomínio Vinculado!' : 'Salvar e Ativar Subdomínio'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => copyToClipboard(`https://${chosenSubdomain}.${integrations.domainBase}`, 'copy-url')}
+                    className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium flex items-center gap-1.5"
+                  >
+                    {copiedKey === 'copy-url' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    <span>Copiar Link</span>
                   </button>
                 </div>
-                <p className="text-[11px] text-zinc-400 mt-2">
-                  Gera a pasta otimizada <span className="font-mono text-zinc-300">dist/</span> pronta para o Nginx.
-                </p>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-3 text-zinc-400">
+                <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800">
+                  <span className="font-bold text-white block mb-1">Roteamento Cloudflare</span>
+                  <span>O wildcard *.x09.com.br encaminha os acessos diretamente para a VPS Hostinger.</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800">
+                  <span className="font-bold text-white block mb-1">Certificado SSL Automático</span>
+                  <span>Proteção HTTPS ativa por padrão via Cloudflare Edge sem custo adicional.</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800">
+                  <span className="font-bold text-white block mb-1">Build Isolado</span>
+                  <span>Cada projeto é compilado em sua própria pasta estática otimizada para o Nginx.</span>
+                </div>
               </div>
             </div>
           )}
 
-          {activeTab === 'vps' && (
+          {/* TAB 2: CLOUDFLARE WILDCARD DNS */}
+          {activeTab === 'cloudflare' && (
             <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-white mb-1 flex items-center justify-between">
-                  <span>Passo a Passo via SSH na Hostinger VPS</span>
-                  <button
-                    onClick={() => copyToClipboard(vpsCommands, 'vps')}
-                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold"
-                  >
-                    {copiedKey === 'vps' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    Copiar Script Completo
-                  </button>
-                </h4>
-                <pre className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono overflow-x-auto whitespace-pre leading-relaxed">
-                  {vpsCommands}
-                </pre>
+              <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 text-amber-200">
+                <span className="font-bold text-white block mb-1">Configuração no painel Cloudflare (x09.com.br):</span>
+                Adicione estes registros DNS na sua conta do Cloudflare com o Proxy Laranja (Orange Cloud) ativado para proteger e acelerar todos os subdomínios.
               </div>
 
-              <div>
-                <h4 className="text-sm font-bold text-white mb-1 flex items-center justify-between">
-                  <span>Configuração Nginx (/etc/nginx/sites-available/studio-x09)</span>
-                  <button
-                    onClick={() => copyToClipboard(nginxConfig, 'nginx')}
-                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold"
-                  >
-                    {copiedKey === 'nginx' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    Copiar Nginx Config
-                  </button>
-                </h4>
-                <pre className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-emerald-400 font-mono overflow-x-auto whitespace-pre leading-relaxed">
-                  {nginxConfig}
-                </pre>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'github' && (
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-white mb-1 flex items-center justify-between">
-                  <span>Comandos para enviar ao seu repositório Studio x09 no GitHub</span>
-                  <button
-                    onClick={() => copyToClipboard(gitCommands, 'git')}
-                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold"
-                  >
-                    {copiedKey === 'git' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    Copiar Comandos Git
-                  </button>
-                </h4>
-                <pre className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono overflow-x-auto whitespace-pre leading-relaxed">
-                  {gitCommands}
-                </pre>
-              </div>
-
-              <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 space-y-2">
-                <span className="font-bold text-white block">Dica para deploys automáticos:</span>
-                <p>
-                  Você pode criar uma GitHub Action (<code className="text-zinc-200">.github/workflows/deploy.yml</code>) com SSH Key que executa o comando <code className="text-zinc-200">git pull && npm run build</code> na sua Hostinger a cada <code className="text-zinc-200">git push</code>!
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'domain' && (
-            <div className="space-y-4">
-              <h4 className="text-sm font-bold text-white mb-2">
-                Registros DNS recomendados para sua Hostinger VPS
-              </h4>
-              <div className="border border-zinc-800 rounded-xl overflow-hidden text-xs">
+              <div className="border border-zinc-800 rounded-xl overflow-hidden">
                 <table className="w-full text-left">
                   <thead className="bg-zinc-900 text-zinc-400 border-b border-zinc-800">
                     <tr>
                       <th className="p-3">Tipo</th>
-                      <th className="p-3">Nome / Host</th>
-                      <th className="p-3">Destino / Valor</th>
-                      <th className="p-3">TTL</th>
+                      <th className="p-3">Nome</th>
+                      <th className="p-3">Destino (Hostinger VPS)</th>
+                      <th className="p-3">Proxy</th>
+                      <th className="p-3">Finalidade</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800 text-zinc-300">
                     <tr>
                       <td className="p-3 font-mono text-purple-400">A</td>
-                      <td className="p-3 font-mono">@</td>
-                      <td className="p-3 font-mono">SEU_IP_HOSTINGER</td>
-                      <td className="p-3">3600 (1 hora)</td>
+                      <td className="p-3 font-mono font-bold text-white">studio</td>
+                      <td className="p-3 font-mono">{integrations.hostingerVpsIp}</td>
+                      <td className="p-3 text-amber-400 font-bold">Proxied (Laranja)</td>
+                      <td className="p-3">Plataforma X09 Studio</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-purple-400">CNAME</td>
-                      <td className="p-3 font-mono">www</td>
-                      <td className="p-3 font-mono">seudominio.com.br</td>
-                      <td className="p-3">3600 (1 hora)</td>
+                      <td className="p-3 font-mono text-purple-400">A</td>
+                      <td className="p-3 font-mono font-bold text-purple-300">* (Wildcard)</td>
+                      <td className="p-3 font-mono">{integrations.hostingerVpsIp}</td>
+                      <td className="p-3 text-amber-400 font-bold">Proxied (Laranja)</td>
+                      <td className="p-3">Todos os sites dos usuários (*.x09.com.br)</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-zinc-400">
-                Após apontar os DNS, aguarde até 30 minutos para propagação e execute o comando <code className="text-purple-300">certbot --nginx</code> para obter seu certificado SSL gratuito.
-              </p>
+
+              <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 space-y-1">
+                <span className="font-bold text-white block">Configuração SSL/TLS no Cloudflare:</span>
+                <p>
+                  No menu <strong>SSL/TLS</strong> do Cloudflare, defina a criptografia como <strong>Full (Strict)</strong> para garantir segurança de ponta a ponta entre o navegador e sua VPS Hostinger.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: HOSTINGER VPS */}
+          {activeTab === 'vps' && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-bold text-white mb-1 flex items-center justify-between">
+                  <span>1. Bloco Nginx Wildcard (/etc/nginx/sites-available/x09-subdomains)</span>
+                  <button
+                    onClick={() => copyToClipboard(vpsWildcardNginx, 'copy-nginx')}
+                    className="text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold"
+                  >
+                    {copiedKey === 'copy-nginx' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>Copiar Nginx Wildcard</span>
+                  </button>
+                </h4>
+                <pre className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-emerald-400 font-mono overflow-x-auto leading-relaxed">
+                  {vpsWildcardNginx}
+                </pre>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-white mb-1 flex items-center justify-between">
+                  <span>2. Script SSH para o Projeto Atual ({chosenSubdomain})</span>
+                  <button
+                    onClick={() => copyToClipboard(vpsDeployScript, 'copy-vps')}
+                    className="text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold"
+                  >
+                    {copiedKey === 'copy-vps' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>Copiar Script de Deploy</span>
+                  </button>
+                </h4>
+                <pre className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 font-mono overflow-x-auto leading-relaxed">
+                  {vpsDeployScript}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: BANCO SUPABASE */}
+          {activeTab === 'supabase' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-blue-950/20 border border-blue-500/30 text-blue-200">
+                <span className="font-bold text-white block mb-1">Schema SQL para sua instância Supabase:</span>
+                Execute este script no <strong>SQL Editor</strong> do seu dashboard do Supabase para criar as tabelas de usuários, projetos e subdomínios vinculados ao Studio x09.
+              </div>
+
+              <div>
+                <h4 className="font-bold text-white mb-1 flex items-center justify-between">
+                  <span>Script SQL (Tabelas de Usuários e Projetos)</span>
+                  <button
+                    onClick={() => copyToClipboard(supabaseSqlSchema, 'copy-sql')}
+                    className="text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold"
+                  >
+                    {copiedKey === 'copy-sql' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>Copiar SQL Supabase</span>
+                  </button>
+                </h4>
+                <pre className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-purple-300 font-mono overflow-x-auto leading-relaxed">
+                  {supabaseSqlSchema}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: REPOSITÓRIO GITHUB */}
+          {activeTab === 'github' && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-bold text-white mb-1 flex items-center justify-between">
+                  <span>Comandos para enviar ao seu GitHub</span>
+                  <button
+                    onClick={() => copyToClipboard(gitCommands, 'copy-git')}
+                    className="text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold"
+                  >
+                    {copiedKey === 'copy-git' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>Copiar Git</span>
+                  </button>
+                </h4>
+                <pre className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 font-mono overflow-x-auto leading-relaxed">
+                  {gitCommands}
+                </pre>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-zinc-800/80 bg-zinc-900/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-xs text-zinc-400">
-            Você pode exportar a qualquer momento pelo menu de configurações ou via Git.
-          </div>
+        {/* Modal Footer */}
+        <div className="px-6 py-4 border-t border-zinc-800/80 bg-zinc-900/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <span className="text-zinc-400">
+            Endereço ativo: <strong className="text-white font-mono">https://{chosenSubdomain}.{integrations.domainBase}</strong>
+          </span>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors"
+              className="px-4 py-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800"
             >
               Fechar
             </button>
             <button
               onClick={() => {
-                copyToClipboard(vpsCommands, 'footer-copy');
+                copyToClipboard(`https://${chosenSubdomain}.${integrations.domainBase}`, 'footer-copy');
               }}
-              className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 transition-all shadow-md flex items-center gap-1.5"
+              className="px-4 py-2 rounded-lg font-bold text-white bg-purple-600 hover:bg-purple-500 shadow flex items-center gap-1.5"
             >
-              {copiedKey === 'footer-copy' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              <span>Copiar comandos de Deploy</span>
+              {copiedKey === 'footer-copy' ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+              <span>Copiar URL do Site</span>
             </button>
           </div>
         </div>
