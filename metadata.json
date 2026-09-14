@@ -1,0 +1,6 @@
+{
+  "name": "X09 Studio 2.0",
+  "description": "X09 Studio 2.0 - Descreva. A gente cria. Você se impressiona. Plataforma de inteligência para criação de sites, SaaS e apps através de conversação natural.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
