@@ -1,10 +1,51 @@
 import express, { Request, Response } from 'express';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getSupabaseAdmin } from './supabaseAdmin';
 
 export const paymentsRouter = express.Router();
 
 // Memory store fallback for processed webhook payment IDs (idempotency safeguard)
 const processedPaymentIds = new Set<string>();
+
+/**
+ * Validates Mercado Pago Webhook HMAC-SHA256 signature
+ * Header: x-signature: ts=...,v1=...
+ * Header: x-request-id
+ */
+export function verifyMercadoPagoSignature(input: {
+  xSignature?: string | null;
+  xRequestId?: string | null;
+  dataId?: string | null;
+}): boolean {
+  const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+  if (!secret) {
+    // If webhook secret not set in development, accept requests safely
+    return true;
+  }
+  if (!input.xSignature || !input.dataId) return false;
+
+  const parts = Object.fromEntries(
+    input.xSignature.split(',').map((part) => {
+      const [k, v] = part.split('=');
+      return [k?.trim() ?? '', v?.trim() ?? ''];
+    })
+  );
+
+  const ts = parts.ts;
+  const v1 = parts.v1;
+  if (!ts || !v1) return false;
+
+  const manifest = `id:${input.dataId};request-id:${input.xRequestId ?? ''};ts:${ts};`;
+  const expected = createHmac('sha256', secret).update(manifest).digest('hex');
+
+  try {
+    const a = Buffer.from(expected, 'utf8');
+    const b = Buffer.from(v1, 'utf8');
+    return a.length === b.length && timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * POST /api/payments/create-subscription
@@ -195,6 +236,20 @@ paymentsRouter.post('/webhook', async (req: Request, res: Response) => {
     }
 
     const strPaymentId = String(paymentId);
+
+    // Signature verification if MERCADO_PAGO_WEBHOOK_SECRET is present
+    const xSignature = req.headers['x-signature'] as string | undefined;
+    const xRequestId = req.headers['x-request-id'] as string | undefined;
+    const isValidSignature = verifyMercadoPagoSignature({
+      xSignature,
+      xRequestId,
+      dataId: strPaymentId,
+    });
+
+    if (!isValidSignature) {
+      console.warn(`[Mercado Pago Webhook] Assinatura inválida para payment ${strPaymentId}`);
+      return res.status(401).json({ error: 'Assinatura inválida do webhook' });
+    }
 
     // 1. In-memory idempotency check
     if (processedPaymentIds.has(strPaymentId)) {

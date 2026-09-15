@@ -132,6 +132,16 @@ export interface FitLifeState {
   trainersCount: string;
   satisfactionRate: string;
   yearsHistory: string;
+  isBlank?: boolean;
+  productType?: 'landing' | 'saas' | 'ecommerce' | 'blank';
+  customCode?: string;
+  sections?: {
+    id: string;
+    type: 'hero' | 'features' | 'pricing' | 'gallery' | 'stats' | 'contact' | 'custom';
+    title: string;
+    subtitle?: string;
+    items?: { title: string; desc: string; icon?: string; price?: string; img?: string }[];
+  }[];
   modalities: {
     id: string;
     title: string;

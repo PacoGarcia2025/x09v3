@@ -1,17 +1,20 @@
 import { ChatMessage, FitLifeState, ShowcaseProject, X09Template, MercadoPagoPlan, CreditPackage } from '../types/x09';
 
 export const BLANK_PROJECT_DATA: FitLifeState = {
-  name: 'Meu Projeto',
-  slogan: 'Construído do Zero',
-  headline: 'TELA EM BRANCO • DESCREVA SUA IDEIA',
-  subheadline: 'Use o chat do X09 Studio ao lado para criar páginas, botões, formulários e lógica interativa.',
-  phone: '(11) 99999-9999',
-  whatsapp: '(11) 99999-9999',
-  accentColor: '#a855f7',
+  name: 'Novo Projeto',
+  slogan: 'Projeto em Branco',
+  headline: 'DESCREVA SEU PROJETO',
+  subheadline: 'Diga no chat ao lado o que você quer construir (ex: SaaS financeiro, e-commerce, delivery, clínica ou portfolio) e o X09 Studio construirá em tempo real.',
+  phone: '',
+  whatsapp: '',
+  accentColor: '#8b5cf6',
   activeStudents: '0',
   trainersCount: '0',
   satisfactionRate: '100%',
   yearsHistory: '2026',
+  isBlank: true,
+  productType: 'blank',
+  sections: [],
   modalities: [],
 };
 

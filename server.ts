@@ -98,16 +98,17 @@ app.post('/api/ai/chat', async (req, res) => {
       const systemPrompt = `Você é o X09, o arquiteto de IA sênior e motor criativo do X09 Studio.
 Sua missão é entrevistar o usuário em português e ajudá-lo a criar ou personalizar websites, SaaS e aplicações com design de altíssimo nível.
 Contexto atual do projeto:
-Nome: ${projectContext?.name || 'FitLife'}
-Segmento: ${projectContext?.slogan || 'Academia Premium'}
-Cores: ${projectContext?.accentColor || '#c4f039'}
-Telefone: ${projectContext?.phone || '(19) 99999-9999'}
+Nome: ${projectContext?.name || 'Novo Projeto'}
+Segmento: ${projectContext?.slogan || 'SaaS / Web App'}
+Cores: ${projectContext?.accentColor || '#8b5cf6'}
+Telefone: ${projectContext?.phone || ''}
+Tela em Branco: ${projectContext?.isBlank ? 'Sim' : 'Não'}
 
 Regras de resposta:
-1. Seja objetivo, empolgante, focado em alta qualidade e design moderno.
+1. Seja objetivo, empolgante, focado em alta qualidade e design moderno (estilo Lovable/Base44).
 2. Responda em no máximo 2 a 3 frases claras.
 3. Sugira 2 a 4 opções rápidas ("quickReplies") para o usuário clicar e decidir rápido.
-4. Se o usuário pedir para mudar cores, títulos, telefones, modalidades ou planos, confirme a alteração aplicada com entusiasmo.
+4. Se o usuário estiver criando um novo projeto do zero ou pedindo alterações, retorne um objeto "patch" com campos como: name, slogan, headline, subheadline, accentColor, phone, whatsapp, e se for um novo projeto, defina "isBlank": false para renderizar o design imediatamente!
 
 Retorne SEMPRE um JSON válido com o seguinte formato:
 {
@@ -115,14 +116,17 @@ Retorne SEMPRE um JSON válido com o seguinte formato:
   "quickReplies": ["Opção 1", "Opção 2", "Opção 3"],
   "patch": {
     "name": "novo nome se solicitado (ou omitir)",
+    "slogan": "novo slogan/nicho (ou omitir)",
+    "headline": "nova headline de alto impacto (ou omitir)",
+    "subheadline": "nova subheadline explicativa (ou omitir)",
     "accentColor": "#hex se solicitado (ou omitir)",
-    "headline": "nova headline se solicitada (ou omitir)",
-    "phone": "novo telefone se solicitado (ou omitir)"
+    "phone": "novo telefone se solicitado (ou omitir)",
+    "isBlank": false
   }
 }`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: `${systemPrompt}\n\nUsuário disse: "${message}"`,
         config: {
           responseMimeType: 'application/json',
@@ -153,7 +157,12 @@ Retorne SEMPRE um JSON válido com o seguinte formato:
   const lower = message.toLowerCase();
   let text = '';
   let quickReplies: string[] = [];
-  const patch: Record<string, string> = {};
+  const patch: Record<string, any> = {};
+
+  // If currently blank, activate project rendering on any creation prompt
+  if (projectContext?.isBlank) {
+    patch.isBlank = false;
+  }
 
   if (lower.includes('cor') || lower.includes('paleta') || lower.includes('neon') || lower.includes('azul') || lower.includes('dourado') || lower.includes('preto')) {
     if (lower.includes('azul') || lower.includes('ciano')) {
@@ -195,11 +204,30 @@ Retorne SEMPRE um JSON válido com o seguinte formato:
       quickReplies = ['(11) 98765-4321', '(21) 99888-7766', 'Pular este passo'];
     }
   } else if (lower.includes('plano') || lower.includes('preço') || lower.includes('valor')) {
-    text = 'Os planos interativos da academia contam com seletor Mensal e Anual (-20%), com checkout e modal de matrícula 100% funcional. Deseja ativar o Plano VIP Diamond?';
+    text = 'Os planos interativos contam com seletor Mensal e Anual (-20%), com checkout e modal de contratação 100% funcional. Deseja ativar o Plano VIP Diamond?';
     quickReplies = ['Sim, ativar VIP Diamond', 'Ajustar valor do Plano Básico', 'Ver aba de Planos'];
   } else {
-    text = `Com certeza! Registrei "${message}" na estrutura do projeto. O código, os textos e a interface já foram ajustados no preview ao lado.`;
-    quickReplies = ['Avançar para Planejamento', 'Customizar Design System', 'Ver código fonte gerado'];
+    // Creation or generic update
+    if (lower.includes('saas') || lower.includes('financeiro') || lower.includes('b2b')) {
+      patch.name = 'Nexus Finance';
+      patch.slogan = 'Fintech & SaaS B2B';
+      patch.headline = 'CONTROLE FINANCEIRO INTELIGENTE EM TEMPO REAL';
+      patch.subheadline = 'Automatize cobranças, conciliação e relatórios com inteligência artificial nativa.';
+      patch.accentColor = '#38bdf8';
+      text = 'Projeto configurado como SaaS Financeiro B2B com visual futurista e métricas em tempo real!';
+      quickReplies = ['Testar Planos', 'Ajustar Cores', 'Ver Código Fonte'];
+    } else if (lower.includes('barbearia') || lower.includes('barber')) {
+      patch.name = 'Barber King';
+      patch.slogan = 'Cortes Clássicos & Barba';
+      patch.headline = 'TRADIÇÃO & ESTILO PARA O HOMEM MODERNO';
+      patch.subheadline = 'Agende seu horário online sem espera com os melhores barbeiros da cidade.';
+      patch.accentColor = '#eab308';
+      text = 'Projeto configurado como Barbearia Premium com agendamento online!';
+      quickReplies = ['Ver Agendamento', 'Personalizar Preços', 'Conectar WhatsApp'];
+    } else {
+      text = `Com certeza! Registrei "${message}" na estrutura do projeto. O código, os textos e a interface já foram ajustados no preview ao lado.`;
+      quickReplies = ['Avançar para Planejamento', 'Customizar Design System', 'Ver código fonte gerado'];
+    }
   }
 
   res.json({ text, quickReplies, patch });

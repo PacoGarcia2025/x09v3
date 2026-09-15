@@ -432,23 +432,50 @@ USING (auth.uid() = user_id);`;
             </div>
           )}
 
-          {/* TAB 5: REPOSITÓRIO GITHUB */}
+          {/* TAB 5: REPOSITÓRIO GITHUB COM FILTRO DE SEGREDOS ATIVO */}
           {activeTab === 'github' && (
             <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-start gap-3 text-xs">
+                <Shield className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold text-emerald-300 flex items-center gap-2">
+                    <span>Proteção de Segredos Ativa (secrets-filter)</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-900/60 text-[10px] text-emerald-300 border border-emerald-700/50">
+                      Auditado
+                    </span>
+                  </div>
+                  <p className="text-zinc-300 mt-0.5 leading-relaxed">
+                    Arquivos como <code className="text-rose-300 font-mono">.env</code>, <code className="text-rose-300 font-mono">credentials.json</code>, chaves privadas e pastas de build (<code className="text-zinc-400 font-mono">dist/</code>, <code className="text-zinc-400 font-mono">node_modules/</code>) são automaticamente excluídos de commits e pushes para proteger suas chaves do Supabase, Mercado Pago e Gemini.
+                  </p>
+                </div>
+              </div>
+
               <div>
-                <h4 className="font-bold text-white mb-1 flex items-center justify-between">
+                <h4 className="font-bold text-white mb-1 flex items-center justify-between text-xs">
                   <span>Comandos para enviar ao seu GitHub</span>
                   <button
                     onClick={() => copyToClipboard(gitCommands, 'copy-git')}
                     className="text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold"
                   >
                     {copiedKey === 'copy-git' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>Copiar Git</span>
+                    <span>Copiar Comandos Git</span>
                   </button>
                 </h4>
-                <pre className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 font-mono overflow-x-auto leading-relaxed">
+                <pre className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 font-mono text-xs overflow-x-auto leading-relaxed">
                   {gitCommands}
                 </pre>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <Github className="w-4 h-4 text-white" />
+                  <span className="text-zinc-300">Repositório sugerido:</span>
+                  <strong className="text-white font-mono">{chosenSubdomain}-x09</strong>
+                </div>
+                <span className="text-emerald-400 text-[11px] font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Higiene de código validada
+                </span>
               </div>
             </div>
           )}

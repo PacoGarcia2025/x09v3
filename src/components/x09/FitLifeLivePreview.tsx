@@ -20,6 +20,7 @@ import {
   CreditCard,
   QrCode,
   Sparkles,
+  Edit3,
 } from 'lucide-react';
 import { FitLifeState } from '../../types/x09';
 
@@ -27,12 +28,14 @@ interface FitLifeLivePreviewProps {
   data: FitLifeState;
   deviceMode?: 'desktop' | 'mobile';
   showDualPreview?: boolean;
+  onSelectElement?: (elementName: string, currentValue: string) => void;
 }
 
 export const FitLifeLivePreview: React.FC<FitLifeLivePreviewProps> = ({
   data,
   deviceMode = 'desktop',
   showDualPreview = false,
+  onSelectElement,
 }) => {
   const accent = data.accentColor || '#c4f039';
 
@@ -83,44 +86,100 @@ export const FitLifeLivePreview: React.FC<FitLifeLivePreviewProps> = ({
     setBookingSuccess(true);
   };
 
-  const renderContent = (isMobileLayout: boolean) => (
-    <div className={`w-full bg-zinc-950 text-white font-sans overflow-x-hidden ${isMobileLayout ? 'text-xs' : 'text-sm'}`}>
-      {/* Top Notification Bar */}
-      <div className="bg-zinc-900/95 border-b border-zinc-800/80 px-4 py-1.5 flex items-center justify-between text-[11px] text-zinc-400">
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: accent }}></span>
-          <span>Matrículas abertas • 1 mês de consultoria nutricional grátis na assinatura anual</span>
+  const renderContent = (isMobileLayout: boolean) => {
+    // 1. TELA EM BRANCO (NOVO PROJETO DO ZERO)
+    if (data.isBlank) {
+      return (
+        <div className={`w-full bg-[#07090b] text-white font-sans min-h-[500px] flex flex-col items-center justify-center p-6 sm:p-12 text-center relative overflow-hidden border border-zinc-800/80 rounded-2xl ${isMobileLayout ? 'text-xs' : 'text-sm'}`}>
+          {/* Subtle glow background */}
+          <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ backgroundColor: accent }} />
+          <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full blur-3xl opacity-15 bg-blue-600 pointer-events-none" />
+
+          <div className="w-16 h-16 rounded-2xl bg-zinc-900/90 border border-zinc-700/80 flex items-center justify-center mb-6 shadow-xl relative z-10" style={{ borderColor: accent }}>
+            <Sparkles className="w-8 h-8" style={{ color: accent }} />
+          </div>
+
+          <span className="text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 mb-3 text-zinc-400">
+            {data.slogan || 'Projeto em Branco • Pronto para Criação'}
+          </span>
+
+          <h2 className="text-2xl sm:text-4xl font-black text-white max-w-xl mb-3 tracking-tight">
+            {data.name || 'Seu Novo Projeto'}
+          </h2>
+
+          <p className="text-zinc-400 text-xs sm:text-sm max-w-lg mb-8 leading-relaxed">
+            {data.subheadline || 'Descreva no chat ao lado o que você quer construir (ex: "Crie um SaaS financeiro B2B", "Crie uma hamburgueria artesanal com delivery", "Crie um portal imobiliário").'}
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl text-left">
+            <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 transition-all">
+              <div className="text-[10px] font-bold uppercase text-purple-400 mb-1">Passo 1</div>
+              <div className="text-xs font-semibold text-white">Diga seu nicho</div>
+              <div className="text-[11px] text-zinc-400 mt-1">Diga o nome da sua empresa e o produto que você vende.</div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 transition-all">
+              <div className="text-[10px] font-bold uppercase text-blue-400 mb-1">Passo 2</div>
+              <div className="text-xs font-semibold text-white">Escolha suas cores</div>
+              <div className="text-[11px] text-zinc-400 mt-1">Defina tons neon, dark luxury, azul corporate ou minimalista.</div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 transition-all">
+              <div className="text-[10px] font-bold uppercase text-emerald-400 mb-1">Passo 3</div>
+              <div className="text-xs font-semibold text-white">Publicação 1-Click</div>
+              <div className="text-[11px] text-zinc-400 mt-1">Subdomínio ativo na hora em *.x09.com.br via Cloudflare.</div>
+            </div>
+          </div>
         </div>
-        <div className="hidden sm:flex items-center gap-3">
-          <a
-            href={`https://wa.me/55${data.whatsapp.replace(/\D/g, '')}?text=Ol%C3%A1!%20Gostaria%20de%20informa%C3%A7%C3%B5es%20sobre%20os%20planos%20da%20${encodeURIComponent(data.name)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 hover:text-white transition-colors"
-          >
-            <Phone className="w-3 h-3" style={{ color: accent }} />
-            {data.phone}
-          </a>
-          <span className="text-zinc-600">|</span>
-          <span className="text-zinc-300">Seg - Sex: 05h às 23h • Sáb/Dom: 08h às 18h</span>
+      );
+    }
+
+    return (
+      <div className={`w-full bg-zinc-950 text-white font-sans overflow-x-hidden ${isMobileLayout ? 'text-xs' : 'text-sm'}`}>
+        {/* Top Notification Bar */}
+        <div className="bg-zinc-900/95 border-b border-zinc-800/80 px-4 py-1.5 flex items-center justify-between text-[11px] text-zinc-400">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: accent }}></span>
+            <span>Matrículas abertas • 1 mês de consultoria nutricional grátis na assinatura anual</span>
+          </div>
+          <div className="hidden sm:flex items-center gap-3">
+            <a
+              href={`https://wa.me/55${data.whatsapp.replace(/\D/g, '')}?text=Ol%C3%A1!%20Gostaria%20de%20informa%C3%A7%C3%B5es%20sobre%20os%20planos%20da%20${encodeURIComponent(data.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 hover:text-white transition-colors"
+            >
+              <Phone className="w-3 h-3" style={{ color: accent }} />
+              {data.phone}
+            </a>
+            <span className="text-zinc-600">|</span>
+            <span className="text-zinc-300">Seg - Sex: 05h às 23h • Sáb/Dom: 08h às 18h</span>
+          </div>
         </div>
-      </div>
 
       {/* Navigation */}
       <header className="sticky top-0 z-30 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-900 px-4 sm:px-6 py-3 flex items-center justify-between">
         <div
-          onClick={() => setActiveTab('inicio')}
-          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => {
+            if (onSelectElement) {
+              onSelectElement('Nome da Marca', data.name);
+            } else {
+              setActiveTab('inicio');
+            }
+          }}
+          className="group/brand relative flex items-center gap-2 cursor-pointer p-1 rounded-lg transition-all hover:bg-zinc-900/60"
+          title="Clique para editar nome da marca no chat"
         >
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-black text-base shadow-sm"
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-black text-base shadow-sm shrink-0"
             style={{ backgroundColor: accent }}
           >
             <Dumbbell className="w-5 h-5 text-zinc-950" />
           </div>
           <div>
-            <span className="font-extrabold tracking-wider text-white text-base block leading-none">
-              {data.name.toUpperCase()}
+            <span className="font-extrabold tracking-wider text-white text-base block leading-none flex items-center gap-1.5">
+              <span>{data.name.toUpperCase()}</span>
+              {onSelectElement && (
+                <Edit3 className="w-3 h-3 text-purple-400 opacity-0 group-hover/brand:opacity-100 transition-opacity" />
+              )}
             </span>
             <span className="text-[9px] tracking-widest text-zinc-400 font-semibold uppercase">
               {data.slogan}
@@ -202,12 +261,32 @@ export const FitLifeLivePreview: React.FC<FitLifeLivePreviewProps> = ({
                 <span>EXPERIÊNCIA FITNESS ULTRA-PREMIUM</span>
               </div>
 
-              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight text-white leading-tight mb-3">
-                {data.headline}
+              <h1
+                onClick={() => onSelectElement && onSelectElement('Título Principal (Headline)', data.headline)}
+                className="group/headline text-2xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight text-white leading-tight mb-3 cursor-pointer relative"
+                title="Clique para editar este título no chat"
+              >
+                <span>{data.headline}</span>
+                {onSelectElement && (
+                  <span className="inline-flex items-center gap-1 ml-2 text-[11px] font-normal lowercase tracking-normal text-purple-400 opacity-0 group-hover/headline:opacity-100 transition-opacity bg-purple-950/60 border border-purple-500/40 px-2 py-0.5 rounded-full">
+                    <Edit3 className="w-3 h-3" />
+                    <span>editar</span>
+                  </span>
+                )}
               </h1>
 
-              <p className="text-zinc-300 text-sm sm:text-base max-w-lg mb-6 leading-relaxed">
-                {data.subheadline} Equipamentos de padrão internacional, planos personalizados com IA e infraestrutura completa para você superar qualquer limite.
+              <p
+                onClick={() => onSelectElement && onSelectElement('Subtítulo Descritivo', data.subheadline)}
+                className="group/subheadline text-zinc-300 text-sm sm:text-base max-w-lg mb-6 leading-relaxed cursor-pointer relative"
+                title="Clique para editar este subtítulo no chat"
+              >
+                <span>{data.subheadline} Equipamentos de padrão internacional, planos personalizados com IA e infraestrutura completa para você superar qualquer limite.</span>
+                {onSelectElement && (
+                  <span className="inline-flex items-center gap-1 ml-2 text-[10px] text-purple-400 opacity-0 group-hover/subheadline:opacity-100 transition-opacity bg-purple-950/60 border border-purple-500/40 px-1.5 py-0.5 rounded-full">
+                    <Edit3 className="w-2.5 h-2.5" />
+                    <span>editar texto</span>
+                  </span>
+                )}
               </p>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -1002,6 +1081,7 @@ export const FitLifeLivePreview: React.FC<FitLifeLivePreviewProps> = ({
       )}
     </div>
   );
+};
 
   if (deviceMode === 'mobile') {
     return (

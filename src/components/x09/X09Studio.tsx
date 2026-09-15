@@ -111,6 +111,12 @@ export const X09Studio: React.FC<X09StudioProps> = ({
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Inspector click-to-edit adapter
+  const handleSelectElement = (elementName: string, currentValue: string) => {
+    setActiveStep(1);
+    setInputValue(`Quero alterar o ${elementName} (atual: "${currentValue}") para `);
+  };
+
   // Sync active project data changes
   useEffect(() => {
     if (activeProject) {
@@ -1142,6 +1148,7 @@ export default {
                     data={fitLifeData}
                     deviceMode={deviceView}
                     showDualPreview={deviceView === 'desktop'}
+                    onSelectElement={handleSelectElement}
                   />
                 </div>
               </div>
