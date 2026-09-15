@@ -21,6 +21,7 @@ import {
 import { SHOWCASE_PROJECTS } from '../../data/mockX09';
 import { FitLifeLivePreview } from './FitLifeLivePreview';
 import { INITIAL_FITLIFE_DATA } from '../../data/mockX09';
+import { X09Logo } from './X09Logo';
 
 interface X09LandingProps {
   onOpenStudio: () => void;
@@ -37,6 +38,7 @@ export const X09Landing: React.FC<X09LandingProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [activeProjectIndex, setActiveProjectIndex] = useState<number>(0);
+  const [logoHeroVariant, setLogoHeroVariant] = useState<'horizontal' | 'circular'>('horizontal');
 
   const categories = ['Todos', 'Sites', 'SaaS', 'Apps', 'E-commerces'];
 
@@ -71,15 +73,18 @@ export const X09Landing: React.FC<X09LandingProps> = ({
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center font-black text-white text-base shadow-lg shadow-purple-600/30">
-              X
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold tracking-wider text-white text-lg">
-                X09
-              </span>
-              <span className="font-light tracking-widest text-purple-400 text-xs uppercase px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">
-                STUDIO 2.0
+            <X09Logo variant="circular" size="sm" withGlow={true} />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold tracking-wider text-white text-base">
+                  X09
+                </span>
+                <span className="font-bold tracking-widest text-purple-400 text-[10px] uppercase px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/25 font-mono">
+                  STUDIO 2.0
+                </span>
+              </div>
+              <span className="text-[9px] text-zinc-400 font-medium tracking-widest hidden sm:inline -mt-0.5">
+                IDEIAS EM APLICAÇÕES REAIS
               </span>
             </div>
           </div>
@@ -134,11 +139,70 @@ export const X09Landing: React.FC<X09LandingProps> = ({
 
       <main className="relative z-10">
         {/* HERO SECTION matching x09-landing-reference.png */}
-        <section id="inicio" className="pt-12 sm:pt-20 pb-16 px-4 sm:px-8 text-center max-w-5xl mx-auto">
+        <section id="inicio" className="pt-8 sm:pt-14 pb-16 px-4 sm:px-8 text-center max-w-5xl mx-auto">
           {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-950/40 border border-purple-500/30 text-xs font-semibold text-purple-300 mb-8 backdrop-blur-md shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-950/40 border border-purple-500/30 text-xs font-semibold text-purple-300 mb-6 backdrop-blur-md shadow-sm">
             <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
             <span>✦ SUA IDEIA. EM ALTO NÍVEL.</span>
+          </div>
+
+          {/* PROMINENT LOGO SHOWCASE SPOTLIGHT (Com grande destaque para as duas versões) */}
+          <div className="relative mx-auto mb-10 flex flex-col items-center justify-center">
+            {/* Neon Backdrop Atmosphere */}
+            <div className="absolute -inset-6 sm:-inset-10 bg-gradient-to-r from-purple-600/30 via-indigo-600/25 to-cyan-500/30 blur-3xl -z-10 rounded-full pointer-events-none opacity-85" />
+
+            {/* Logo Card with Metallic Rim & Glow */}
+            <div className="relative p-4 sm:p-7 rounded-3xl bg-zinc-950/85 border border-zinc-800/90 backdrop-blur-2xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] hover:border-purple-500/50 transition-all duration-300 group flex flex-col items-center max-w-2xl w-full">
+              {/* Visual Badge Header */}
+              <div className="w-full flex items-center justify-between mb-3 px-1 border-b border-zinc-800/70 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-300">
+                    Studio Oficial • Identidade X09
+                  </span>
+                </div>
+
+                {/* Switcher Pills between the 2 uploaded logo versions */}
+                <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] font-semibold">
+                  <button
+                    onClick={() => setLogoHeroVariant('horizontal')}
+                    className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 ${
+                      logoHeroVariant === 'horizontal'
+                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm font-bold'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                    title="Ver Logotipo Horizontal Widescreen"
+                  >
+                    <span>Banner 2.0</span>
+                  </button>
+                  <button
+                    onClick={() => setLogoHeroVariant('circular')}
+                    className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 ${
+                      logoHeroVariant === 'circular'
+                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm font-bold'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                    title="Ver Emblema Circular 3D"
+                  >
+                    <span>Emblema 3D</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* The Active Selected Logo rendered with high fidelity */}
+              <div className="py-2 sm:py-3 flex items-center justify-center min-h-[140px] sm:min-h-[180px] w-full">
+                {logoHeroVariant === 'horizontal' ? (
+                  <X09Logo variant="horizontal" size="hero" withGlow={true} />
+                ) : (
+                  <X09Logo variant="circular" size="hero" withGlow={true} />
+                )}
+              </div>
+
+              <div className="w-full flex items-center justify-between mt-2 pt-2.5 border-t border-zinc-900 text-[10px] text-zinc-400 font-mono">
+                <span>studio.x09.com.br</span>
+                <span className="text-purple-400 font-semibold tracking-wider">IDEIAS EM APLICAÇÕES REAIS</span>
+              </div>
+            </div>
           </div>
 
           {/* Main Massive Heading */}
@@ -550,10 +614,12 @@ export const X09Landing: React.FC<X09LandingProps> = ({
       {/* FOOTER */}
       <footer className="border-t border-zinc-900 bg-[#040607] px-4 sm:px-8 py-8 text-xs text-zinc-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-white">X09 STUDIO 2.0</span>
-            <span>•</span>
-            <span>Descreva. A gente cria. Você se impressiona.</span>
+          <div className="flex items-center gap-3">
+            <X09Logo variant="circular" size="sm" withGlow={false} />
+            <div className="flex flex-col">
+              <span className="font-bold text-white tracking-wider">X09 STUDIO 2.0</span>
+              <span className="text-[10px] text-zinc-400">Ideias em Aplicações Reais • x09.com.br</span>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <button onClick={onOpenDeployGuide} className="hover:text-zinc-300 transition-colors">

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { UserProject } from '../../types/x09';
+import { X09Logo } from './X09Logo';
 
 interface UserDashboardProps {
   onOpenStudio: (project?: UserProject) => void;
@@ -141,10 +142,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       {/* 1. TOP GLOBAL NAVIGATION */}
       <header className="h-16 bg-[#0a0d0c] border-b border-zinc-800/80 px-4 sm:px-8 flex items-center justify-between shrink-0 sticky top-0 z-30 backdrop-blur-md">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center font-black text-white text-sm shadow-md shadow-purple-600/20">
-              X
-            </div>
+          <div className="flex items-center gap-3">
+            <X09Logo variant="circular" size="sm" withGlow={true} />
             <div>
               <div className="flex items-center gap-1.5 leading-none">
                 <span className="font-extrabold tracking-wider text-white text-sm">
@@ -154,8 +153,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                   studio.x09.com.br
                 </span>
               </div>
-              <span className="text-[10px] text-zinc-500 block mt-0.5">
-                Painel do Criador • Lovable & Base44 Standard
+              <span className="text-[10px] text-zinc-400 block mt-0.5 font-medium">
+                Ideias em Aplicações Reais • Painel do Criador
               </span>
             </div>
           </div>

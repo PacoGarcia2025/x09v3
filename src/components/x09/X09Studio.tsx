@@ -43,6 +43,7 @@ import {
 import { INITIAL_FITLIFE_DATA, INITIAL_CHAT_MESSAGES, SAMPLE_ASSETS } from '../../data/mockX09';
 import { FitLifeLivePreview } from './FitLifeLivePreview';
 import { useAuth } from '../../context/AuthContext';
+import { X09Logo } from './X09Logo';
 
 interface X09StudioProps {
   onBackToLanding: () => void;
@@ -331,9 +332,7 @@ export default {
               className="flex items-center gap-2 group text-left"
               title="Voltar para a Landing Page"
             >
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center font-black text-white text-xs shadow-md">
-                X
-              </div>
+              <X09Logo variant="circular" size="sm" withGlow={true} />
               <span className="font-extrabold tracking-wider text-white text-sm hidden sm:inline">
                 X09 STUDIO
               </span>
