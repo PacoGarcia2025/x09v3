@@ -43,7 +43,8 @@ import {
   ChatMessage,
   ProjectProgress,
 } from '../../types/x09';
-import { INITIAL_FITLIFE_DATA, INITIAL_CHAT_MESSAGES, SAMPLE_ASSETS } from '../../data/mockX09';
+import { INITIAL_FITLIFE_DATA, INITIAL_CHAT_MESSAGES, SAMPLE_ASSETS, BLANK_PROJECT_DATA } from '../../data/mockX09';
+import { createSegmentData } from '../../utils/projectTemplates';
 import { FitLifeLivePreview } from './FitLifeLivePreview';
 import { useAuth } from '../../context/AuthContext';
 import { X09Logo } from './X09Logo';
@@ -65,6 +66,7 @@ export const X09Studio: React.FC<X09StudioProps> = ({
     activeProject,
     projects,
     setActiveProject,
+    createProject,
     updateProject,
     consumeCredits,
     integrations,
@@ -76,13 +78,16 @@ export const X09Studio: React.FC<X09StudioProps> = ({
     if (activeProject?.data) {
       return activeProject.data;
     }
-    const saved = localStorage.getItem('x09_project_data');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {}
+    if (activeProject?.id) {
+      const saved = localStorage.getItem(`x09_project_data_${activeProject.id}`);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+      return createSegmentData(activeProject.title || 'Novo Projeto', activeProject.category || 'Geral');
     }
-    return INITIAL_FITLIFE_DATA;
+    return createSegmentData('Meu Projeto', 'Geral');
   });
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -98,14 +103,14 @@ export const X09Studio: React.FC<X09StudioProps> = ({
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [selectedCodeFile, setSelectedCodeFile] = useState<'app' | 'html' | 'tailwind' | 'package'>('app');
   
-  // Custom workspace and sidebar controls
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
-  const [showMobileOverlay, setShowMobileOverlay] = useState<boolean>(true);
+  // Custom workspace and sidebar controls: default collapsed as requested by user
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
+  const [showMobileOverlay, setShowMobileOverlay] = useState<boolean>(false);
 
   // New Project Modal State
   const [showNewProjectModal, setShowNewProjectModal] = useState<boolean>(false);
   const [newProjectName, setNewProjectName] = useState<string>('');
-  const [newProjectSegment, setNewProjectSegment] = useState<string>('Academia & Esporte');
+  const [newProjectSegment, setNewProjectSegment] = useState<string>('Catálogo de Encomendas & Cestas');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -122,6 +127,17 @@ export const X09Studio: React.FC<X09StudioProps> = ({
       setActiveProjectTitle(activeProject.title);
       if (activeProject.data) {
         setFitLifeData(activeProject.data);
+      } else {
+        const saved = localStorage.getItem(`x09_project_data_${activeProject.id}`);
+        if (saved) {
+          try {
+            setFitLifeData(JSON.parse(saved));
+          } catch {
+            setFitLifeData(createSegmentData(activeProject.title, activeProject.category || 'Geral'));
+          }
+        } else {
+          setFitLifeData(createSegmentData(activeProject.title, activeProject.category || 'Geral'));
+        }
       }
     }
   }, [activeProject?.id]);
@@ -129,33 +145,37 @@ export const X09Studio: React.FC<X09StudioProps> = ({
   useEffect(() => {
     if (activeProject && fitLifeData) {
       updateProject(activeProject.id, { data: fitLifeData });
+      localStorage.setItem(`x09_project_data_${activeProject.id}`, JSON.stringify(fitLifeData));
     }
-    localStorage.setItem('x09_project_data', JSON.stringify(fitLifeData));
-  }, [fitLifeData]);
+  }, [fitLifeData, activeProject?.id]);
 
   useEffect(() => {
     if (activeProject) {
       const saved = localStorage.getItem(`x09_chat_messages_${activeProject.id}`);
       if (saved) {
         try {
-          setMessages(JSON.parse(saved));
-          return;
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.length > 0) {
+            setMessages(parsed);
+            return;
+          }
         } catch {}
       }
 
       // Contextual initial welcome message
-      if (activeProject.data?.isBlank) {
+      const isBlank = activeProject.data?.isBlank || activeProject.data?.productType === 'blank';
+      if (isBlank) {
         setMessages([
           {
             id: `msg-welcome-${Date.now()}`,
             sender: 'x09',
-            text: `Olá! 👋 Boas-vindas ao seu novo projeto "${activeProject.title}" no Studio X09. Digite no chat o que você gostaria de construir (por exemplo: um site institucional, clínica de estética, e-commerce, SaaS, imobiliária ou portfólio) e eu irei estruturar o design, as seções, cores e os conteúdos em tempo real para você!`,
+            text: `Olá! 👋 Boas-vindas ao seu novo projeto "${activeProject.title}" no Studio X09. Digite no chat o que você gostaria de construir (por exemplo: catálogo de produtos coloniais/encomendas, e-commerce com checkout, SaaS financeiro, barbearia ou portfólio) e eu estruturarei o design, seções, cores e botões de conversão em tempo real!`,
             time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
             quickReplies: [
-              'Quero um portfólio moderno',
-              'Criar site de Advocacia',
-              'E-commerce Minimalista',
-              'Aplicativo SaaS Financeiro'
+              'Catálogo de Encomendas & Cestas',
+              'Loja Virtual com Checkout',
+              'SaaS de Gestão Financeira',
+              'Barbearia com Agendamento',
             ],
           }
         ]);
@@ -164,13 +184,13 @@ export const X09Studio: React.FC<X09StudioProps> = ({
           {
             id: `msg-welcome-${Date.now()}`,
             sender: 'x09',
-            text: `Olá! 👋 Inicializei o projeto "${activeProject.title}" baseado no modelo profissional. A base visual já está totalmente funcional no preview ao lado! O que você gostaria de personalizar primeiro?`,
+            text: `Olá! 👋 O projeto "${activeProject.title}" está ativo. A prévia visual completa já está carregada à sua direita! O que você gostaria de personalizar agora?`,
             time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
             quickReplies: [
-              'Mudar cores para Neon Lima',
-              'Alterar o telefone de contato',
-              'Configurar os planos de assinatura',
-              'Ajustar Slogan & Headline'
+              'Mudar cores de destaque',
+              'Alterar textos e slogan',
+              'Configurar WhatsApp e contato',
+              'Modificar itens do catálogo/serviços',
             ],
           }
         ]);
@@ -184,7 +204,6 @@ export const X09Studio: React.FC<X09StudioProps> = ({
     if (activeProject && messages.length > 0) {
       localStorage.setItem(`x09_chat_messages_${activeProject.id}`, JSON.stringify(messages));
     }
-    localStorage.setItem('x09_chat_messages', JSON.stringify(messages));
   }, [messages, activeProject?.id]);
 
   useEffect(() => {
@@ -331,12 +350,42 @@ export const X09Studio: React.FC<X09StudioProps> = ({
         } else {
           botText = 'Pode me enviar o número do WhatsApp com o DDD? Assim eu configuro o botão de contato do site na hora.';
         }
+      } else if (lower.includes('catalogo') || lower.includes('catálogo') || lower.includes('encomenda') || lower.includes('colonial') || lower.includes('artesanal') || lower.includes('cesta')) {
+        const seg = createSegmentData(fitLifeData.name || 'Catálogo Artesanal', 'Catálogo');
+        setFitLifeData(seg);
+        botText = 'Seu Catálogo de Encomendas foi gerado com sucesso! Os produtos coloniais e o botão de WhatsApp já estão prontos no preview.';
+        localReplies = ['Ver Produtos no Preview', 'Personalizar WhatsApp', 'Avançar'];
+      } else if (lower.includes('saas') || lower.includes('software') || lower.includes('financeiro') || lower.includes('gestão')) {
+        const seg = createSegmentData(fitLifeData.name || 'Nexus SaaS', 'SaaS');
+        setFitLifeData(seg);
+        botText = 'Projeto configurado como SaaS Financeiro com visual moderno e painel de recursos!';
+        localReplies = ['Ver Recursos no Preview', 'Mudar Cores', 'Ajustar Planos'];
+      } else if (lower.includes('barbearia') || lower.includes('barber') || lower.includes('corte')) {
+        const seg = createSegmentData(fitLifeData.name || 'Barber King', 'Barbearia');
+        setFitLifeData(seg);
+        botText = 'Projeto configurado como Barbearia Premium com agendamento online!';
+        localReplies = ['Ver Agendamento', 'Personalizar Preços', 'Avançar'];
+      } else if (lower.includes('restaurante') || lower.includes('comida') || lower.includes('delivery') || lower.includes('hamburguer') || lower.includes('bistrô')) {
+        const seg = createSegmentData(fitLifeData.name || 'Bistrô & Sabor', 'Gastronomia');
+        setFitLifeData(seg);
+        botText = 'Projeto gastronômico ativado! Cardápio e botão de pedido direto configurados.';
+        localReplies = ['Ver Cardápio', 'Mudar para Laranja', 'Ver Preview'];
+      } else if (lower.includes('imobili') || lower.includes('imovel') || lower.includes('imóve')) {
+        const seg = createSegmentData(fitLifeData.name || 'Prime Imóveis', 'Imobiliária');
+        setFitLifeData(seg);
+        botText = 'Portal imobiliário de alto padrão ativado com catálogo de imóveis!';
+        localReplies = ['Ver Imóveis', 'Ajustar WhatsApp', 'Ver Preview'];
+      } else if (lower.includes('clinica') || lower.includes('clínica') || lower.includes('saúde') || lower.includes('médic')) {
+        const seg = createSegmentData(fitLifeData.name || 'Aura Health', 'Clínica');
+        setFitLifeData(seg);
+        botText = 'Projeto de clínica médica e telemedicina gerado no preview!';
+        localReplies = ['Ver Especialidades', 'Ajustar Contato', 'Avançar'];
       } else {
         // Generic fallback patch to at least render blank pages to full templates
         if (fitLifeData?.isBlank) {
           localPatch.isBlank = false;
-          localPatch.name = text.length < 15 ? text : 'Meu Projeto X09';
-          localPatch.headline = `${text.toUpperCase()} • PRONTO PARA VOCÊ`;
+          localPatch.name = text.length < 25 ? text : 'Meu Projeto X09';
+          localPatch.headline = `${text.toUpperCase()} • DE SEU JEITO`;
         }
       }
 
@@ -356,44 +405,66 @@ export const X09Studio: React.FC<X09StudioProps> = ({
           quickReplies: localReplies,
         };
         setMessages((prev) => [...prev, botMsg]);
-      }, 600);
+        setTimeout(() => {
+          if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          }
+        }, 50);
+      }, 500);
     } finally {
       setIsTyping(false);
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 50);
     }
   };
 
-  const handleCreateNewProject = (e: React.FormEvent) => {
+  const handleCreateNewProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
 
     const brand = newProjectName.trim();
-    setFitLifeData({
-      name: brand,
-      slogan: newProjectSegment,
-      headline: `${brand.toUpperCase()} • O PADRÃO MÁXIMO EM EXCELÊNCIA`,
-      subheadline: `A melhor experiência em ${newProjectSegment}. Tecnologia, atendimento premium e resultados incomparáveis.`,
-      phone: '(11) 98888-7777',
-      whatsapp: '(11) 98888-7777',
-      accentColor: '#38bdf8',
-      activeStudents: '+1.200',
-      trainersCount: '8',
-      satisfactionRate: '99%',
-      yearsHistory: '+3 Anos',
-      modalities: INITIAL_FITLIFE_DATA.modalities,
-    });
+    const segmentData = createSegmentData(brand, newProjectSegment);
 
+    setFitLifeData(segmentData);
     setActiveProjectTitle(`${brand} – ${newProjectSegment}`);
     setShowNewProjectModal(false);
 
-    setMessages([
-      {
-        id: `msg-${Date.now()}`,
-        sender: 'x09',
-        text: `Olá! Inicializei o projeto "${brand}" focado em ${newProjectSegment}. A base visual já foi construída no preview ao lado! O que gostaria de personalizar primeiro?`,
-        time: '12:00',
-        quickReplies: ['Ajustar Paleta de Cores', 'Definir Slogan & Headline', 'Configurar Planos'],
-      },
-    ]);
+    let createdId = `proj_${Date.now()}`;
+    if (user && createProject) {
+      const sub = brand.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 15);
+      const created = await createProject(brand, 'Sites', sub, segmentData);
+      if (created) {
+        createdId = created.id;
+        setActiveProject(created);
+      }
+    }
+
+    localStorage.setItem(`x09_project_data_${createdId}`, JSON.stringify(segmentData));
+
+    const welcomeMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'x09',
+      text: `Olá! 👋 Criei o projeto "${brand}" focado em "${newProjectSegment}". O design moderno, seções e itens em alta conversão já foram atualizados no preview ao lado! O que você gostaria de personalizar agora?`,
+      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      quickReplies: [
+        'Alterar cor de destaque',
+        'Mudar telefone e WhatsApp',
+        'Personalizar os itens/produtos',
+        'Ajustar títulos e slogan',
+      ],
+    };
+
+    setMessages([welcomeMsg]);
+    localStorage.setItem(`x09_chat_messages_${createdId}`, JSON.stringify([welcomeMsg]));
+
+    setTimeout(() => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }, 100);
   };
 
   const generatedCode = {
@@ -982,69 +1053,96 @@ export default {
               )}
 
               {/* STEP 2: PLANEJAMENTO & ARQUITETURA */}
-              {activeStep === 2 && (
-                <div className="p-5 overflow-y-auto space-y-5 custom-scrollbar flex-1">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-purple-400 tracking-wider">
-                      ETAPA 2 DE 6
-                    </span>
-                    <h3 className="text-base font-bold text-white">Mapa de Arquitetura & Páginas</h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">
-                      Controle a estrutura de navegação e os módulos do projeto {fitLifeData.name}.
-                    </p>
-                  </div>
+              {activeStep === 2 && (() => {
+                const isCatalog = fitLifeData.productType === 'catalog' || fitLifeData.slogan.toLowerCase().includes('catálogo') || fitLifeData.slogan.toLowerCase().includes('encomenda') || fitLifeData.slogan.toLowerCase().includes('colonial');
+                const isSaas = fitLifeData.productType === 'saas' || fitLifeData.slogan.toLowerCase().includes('saas') || fitLifeData.slogan.toLowerCase().includes('fintech');
+                const isBarber = fitLifeData.productType === 'barber' || fitLifeData.slogan.toLowerCase().includes('barbearia');
+                const isFood = fitLifeData.productType === 'food' || fitLifeData.slogan.toLowerCase().includes('gastronomia') || fitLifeData.slogan.toLowerCase().includes('delivery');
+                const isGym = fitLifeData.productType === 'gym' || fitLifeData.name.toLowerCase().includes('fitlife');
 
-                  <div className="space-y-2.5 text-xs">
-                    {[
-                      { title: 'Início (Hero & Proposta de Valor)', status: 'Ativo', desc: `Apresenta o slogan "${fitLifeData.slogan}" e a manchete principal "${fitLifeData.headline}".` },
-                      ...fitLifeData.modalities.map(mod => ({
-                        title: `Módulo de Modalidade: ${mod.title}`,
-                        status: 'Ativo',
-                        desc: mod.description
-                      })),
-                      { title: 'Calculadora de IMC & Biofísica', status: 'Ativo', desc: 'Módulo interativo de fitness integrado para retenção de leads.' },
-                      { title: 'Planos & Checkout Online', status: 'Ativo', desc: `Estratégia de preços vinculada ao gatilho de ação com contato via WhatsApp ${fitLifeData.phone}.` },
-                      { title: 'Agendamento de Aula Grátis', status: 'Ativo', desc: `Formulário integrado com envio de voucher para o WhatsApp.` },
-                      { title: 'Rodapé & Localização', status: 'Ativo', desc: `Seção de contato contendo o e-mail oficial e mídias de rede social.` }
-                    ].map((section, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 flex items-start justify-between gap-3"
-                      >
-                        <div>
-                          <div className="font-bold text-white flex items-center gap-2">
-                            <span>{section.title}</span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">
-                              {section.status}
-                            </span>
+                const planSections = [
+                  { title: 'Início (Hero & Proposta de Valor)', status: 'Ativo', desc: `Apresenta a identidade da marca "${fitLifeData.name}", o slogan "${fitLifeData.slogan}" e a manchete "${fitLifeData.headline}".` },
+                  ...fitLifeData.modalities.map(mod => ({
+                    title: `Item em Destaque: ${mod.title}`,
+                    status: 'Ativo',
+                    desc: mod.description
+                  })),
+                  ...(isCatalog ? [
+                    { title: 'Catálogo de Pedidos & Cestas', status: 'Ativo', desc: 'Seleção visual de produtos com botões de encomenda direta via WhatsApp.' },
+                    { title: 'Calculadora de Encomendas & Entrega', status: 'Ativo', desc: 'Simulação rápida de quantidade e prazo de entrega programada.' },
+                  ] : isSaas ? [
+                    { title: 'Recursos & Painel Interativo', status: 'Ativo', desc: 'Demonstração das funcionalidades de automação e inteligência nativa.' },
+                    { title: 'Planos de Assinatura B2B', status: 'Ativo', desc: 'Comparativo mensal e anual com checkout direto.' },
+                  ] : isBarber ? [
+                    { title: 'Agendamento de Horário Online', status: 'Ativo', desc: 'Seleção de barbeiro, horário e confirmação com envio de lembrete via WhatsApp.' },
+                    { title: 'Tabela de Serviços & Cortes', status: 'Ativo', desc: 'Valores transparentes de cortes, barba e tratamentos capilares.' },
+                  ] : isFood ? [
+                    { title: 'Cardápio & Delivery Direto', status: 'Ativo', desc: 'Pratos selecionados com botão de pedido sem taxas abusivas.' },
+                    { title: 'Horários de Atendimento & Entrega', status: 'Ativo', desc: 'Status do restaurante aberto/fechado em tempo real.' },
+                  ] : isGym ? [
+                    { title: 'Calculadora de IMC & Biofísica', status: 'Ativo', desc: 'Módulo interativo de fitness integrado para retenção de leads.' },
+                    { title: 'Agendamento de Aula Grátis', status: 'Ativo', desc: 'Formulário integrado com envio de voucher para o WhatsApp.' },
+                  ] : [
+                    { title: 'Vitrine de Produtos & Serviços', status: 'Ativo', desc: 'Exposição dos principais itens e soluções com detalhes e fotos.' },
+                    { title: 'Formulário de Contato & Proposta', status: 'Ativo', desc: 'Captação de leads qualificados com direcionamento ao WhatsApp.' },
+                  ]),
+                  { title: 'Canal Direto de Atendimento', status: 'Ativo', desc: `Integração com WhatsApp ${fitLifeData.whatsapp || fitLifeData.phone} para conversão imediata.` },
+                  { title: 'Rodapé Institucional & Mídias', status: 'Ativo', desc: `Informações de contato, direitos autorais e links de redes sociais da marca ${fitLifeData.name}.` }
+                ];
+
+                return (
+                  <div className="p-5 overflow-y-auto space-y-5 custom-scrollbar flex-1">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-purple-400 tracking-wider">
+                        ETAPA 2 DE 6
+                      </span>
+                      <h3 className="text-base font-bold text-white">Mapa de Arquitetura & Páginas</h3>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        Controle a estrutura de navegação e os módulos do projeto {fitLifeData.name}.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      {planSections.map((section, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 flex items-start justify-between gap-3"
+                        >
+                          <div>
+                            <div className="font-bold text-white flex items-center gap-2">
+                              <span>{section.title}</span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">
+                                {section.status}
+                              </span>
+                            </div>
+                            <p className="text-zinc-400 text-[11px] mt-1">{section.desc}</p>
                           </div>
-                          <p className="text-zinc-400 text-[11px] mt-1">{section.desc}</p>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
 
-                  <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-800/40 text-xs text-purple-200">
-                    <span className="font-bold text-white block mb-1">Estratégia de Conversão Personalizada:</span>
-                    O funil do projeto <strong className="text-purple-300">{fitLifeData.name}</strong> foi desenhado para captar contatos via WhatsApp ({fitLifeData.whatsapp}) e agendamentos de aula experimental no primeiro scroll, utilizando a cor de destaque principal ({fitLifeData.accentColor}) para maximizar os cliques no Call-to-Action.
-                  </div>
+                    <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-800/40 text-xs text-purple-200">
+                      <span className="font-bold text-white block mb-1">Estratégia de Conversão Personalizada:</span>
+                      O funil do projeto <strong className="text-purple-300">{fitLifeData.name}</strong> foi desenhado para maximizar a conversão no primeiro scroll, utilizando a cor de destaque ({fitLifeData.accentColor}) e canal direto no WhatsApp ({fitLifeData.whatsapp || fitLifeData.phone}).
+                    </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setActiveStep(1)}
-                      className="px-4 py-2 rounded-xl bg-zinc-900 text-xs font-semibold text-zinc-400 hover:text-white"
-                    >
-                      ← Voltar à Conversa
-                    </button>
-                    <button
-                      onClick={() => setActiveStep(3)}
-                      className="flex-1 py-2 rounded-xl bg-purple-600 text-xs font-bold text-white hover:bg-purple-500 shadow"
-                    >
-                      Avançar para Design System ➔
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setActiveStep(1)}
+                        className="px-4 py-2 rounded-xl bg-zinc-900 text-xs font-semibold text-zinc-400 hover:text-white"
+                      >
+                        ← Voltar à Conversa
+                      </button>
+                      <button
+                        onClick={() => setActiveStep(3)}
+                        className="flex-1 py-2 rounded-xl bg-purple-600 text-xs font-bold text-white hover:bg-purple-500 shadow"
+                      >
+                        Avançar para Design System ➔
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* STEP 3: DESIGN SYSTEM */}
               {activeStep === 3 && (
@@ -1226,7 +1324,7 @@ export default {
                       `Nome do projeto "${fitLifeData.name}" configurado como o título principal do site`,
                       `Botão de WhatsApp apontando para o número ativo ${fitLifeData.whatsapp || fitLifeData.phone}`,
                       `Paleta de cores usando o tom de destaque ${fitLifeData.accentColor} em alto contraste WCAG`,
-                      `Total de ${fitLifeData.modalities.length} modalidades esportivas cadastradas com imagens de alta qualidade`,
+                      `Total de ${fitLifeData.modalities.length} produtos / itens principais cadastrados com imagens em alta resolução`,
                       `Estratégia de SEO: Meta descrições sincronizadas com "${fitLifeData.headline || fitLifeData.slogan}"`,
                       `Totalmente responsivo em Smartphones e Tablets`,
                       `Pronto para SSL Let's Encrypt e Deploy Hostinger VPS`,
@@ -1268,7 +1366,7 @@ export default {
                     </span>
                   </h3>
                   <p className="text-[11px] text-zinc-400">
-                    Você pode clicar nos menus, testar matrículas, agendamento de aulas e calculadora.
+                    Interaja com botões, links, carrinho/pedidos e canal direto de WhatsApp em tempo real.
                   </p>
                 </div>
 
@@ -1289,10 +1387,11 @@ export default {
                   )}
                   <button
                     onClick={() => {
-                      setFitLifeData(INITIAL_FITLIFE_DATA);
+                      const resetData = createSegmentData(activeProject?.title || fitLifeData.name || 'Meu Projeto', activeProject?.category || 'Geral');
+                      setFitLifeData(resetData);
                     }}
                     className="text-[11px] text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 flex items-center gap-1"
-                    title="Restaurar padrão"
+                    title="Restaurar padrão deste projeto"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span>Reset</span>

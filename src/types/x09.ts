@@ -133,7 +133,7 @@ export interface FitLifeState {
   satisfactionRate: string;
   yearsHistory: string;
   isBlank?: boolean;
-  productType?: 'landing' | 'saas' | 'ecommerce' | 'blank';
+  productType?: 'landing' | 'saas' | 'ecommerce' | 'blank' | 'catalog' | 'barber' | 'service' | 'health' | 'gym' | 'food';
   customCode?: string;
   sections?: {
     id: string;
