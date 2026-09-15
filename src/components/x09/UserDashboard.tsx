@@ -52,6 +52,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     updateProject,
     checkSubdomainAvailable,
     integrations,
+    creditTransactions,
+    creditEconomy,
   } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'projetos' | 'templates' | 'planos' | 'subdominios' | 'infra'>('projetos');
@@ -169,7 +171,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   };
 
   // Submit New Blank Project (consome 5 créditos)
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
@@ -187,7 +189,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       return;
     }
 
-    const created = createProject(newTitle, newCategory, finalSub);
+    const created = await createProject(newTitle, newCategory, finalSub);
     if (created) {
       setShowNewModal(false);
       setNewTitle('');
@@ -210,7 +212,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     setCloneSubdomainError(null);
   };
 
-  const handleConfirmClone = (e: React.FormEvent) => {
+  const handleConfirmClone = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cloningTemplate) return;
 
@@ -220,7 +222,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       return;
     }
 
-    const cloned = cloneTemplate(cloningTemplate, cloneTitle, finalSub);
+    const cloned = await cloneTemplate(cloningTemplate, cloneTitle, finalSub);
     if (cloned) {
       setCloningTemplate(null);
       onOpenStudio(cloned);
@@ -828,6 +830,82 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Credit Transaction Ledger (Extrato de Transações de Créditos) */}
+            <div className="mt-8 p-6 rounded-3xl bg-zinc-950/80 border border-zinc-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-purple-400" />
+                    <span>Extrato de Consumo e Recarga de Créditos</span>
+                  </h3>
+                  <p className="text-xs text-zinc-400">
+                    Transações atômicas rastreadas com isolamento por usuário.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300">
+                    Custo Projeto: <strong className="text-white">{creditEconomy.projectCreationCost} cr</strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300">
+                    Custo Modelo: <strong className="text-white">{creditEconomy.templateCloneCost} cr</strong>
+                  </span>
+                </div>
+              </div>
+
+              {creditTransactions.length === 0 ? (
+                <div className="p-6 rounded-2xl bg-zinc-900/30 border border-zinc-800/60 text-center text-xs text-zinc-500">
+                  Nenhuma movimentação de créditos registrada ainda nesta conta.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-800/80 text-zinc-400">
+                        <th className="pb-2 font-semibold">Data / Hora</th>
+                        <th className="pb-2 font-semibold">Descrição</th>
+                        <th className="pb-2 font-semibold">Tipo</th>
+                        <th className="pb-2 font-semibold text-right">Valor</th>
+                        <th className="pb-2 font-semibold text-right">Saldo Resultante</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-900 text-zinc-300">
+                      {creditTransactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-zinc-900/40 transition-colors">
+                          <td className="py-2.5 font-mono text-[11px] text-zinc-400">
+                            {new Date(tx.createdAt).toLocaleString('pt-BR')}
+                          </td>
+                          <td className="py-2.5 font-medium text-white">{tx.description}</td>
+                          <td className="py-2.5">
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                tx.type === 'purchase'
+                                  ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30'
+                                  : tx.type === 'project_creation'
+                                  ? 'bg-purple-950/80 text-purple-300 border border-purple-500/30'
+                                  : 'bg-zinc-800 text-zinc-300'
+                              }`}
+                            >
+                              {tx.type}
+                            </span>
+                          </td>
+                          <td
+                            className={`py-2.5 font-mono font-bold text-right ${
+                              tx.amount > 0 ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {tx.amount > 0 ? `+${tx.amount}` : tx.amount} cr
+                          </td>
+                          <td className="py-2.5 font-mono text-right text-zinc-400">
+                            {tx.balanceAfter} cr
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

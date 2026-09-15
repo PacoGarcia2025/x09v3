@@ -3,6 +3,8 @@ import path from 'path';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
+import { paymentsRouter } from './server/paymentsRouter';
+import { creditsRouter } from './server/creditsRouter';
 
 dotenv.config();
 
@@ -10,6 +12,10 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Mount API Routers
+app.use('/api/payments', paymentsRouter);
+app.use('/api/credits', creditsRouter);
 
 // Lazy-initialize Gemini AI client
 let aiClient: GoogleGenAI | null = null;

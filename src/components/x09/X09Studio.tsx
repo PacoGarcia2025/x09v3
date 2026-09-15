@@ -176,7 +176,7 @@ export const X09Studio: React.FC<X09StudioProps> = ({
     }
 
     // Deduct 1 credit per AI interaction
-    consumeCredits(1, 'Alteração via Inteligência Artificial');
+    await consumeCredits(1, 'Alteração via Inteligência Artificial');
 
     const newMsg: ChatMessage = {
       id: `user-${Date.now()}`,

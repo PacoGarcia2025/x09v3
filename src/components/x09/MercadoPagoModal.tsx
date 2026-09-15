@@ -63,9 +63,9 @@ export const MercadoPagoModal: React.FC<MercadoPagoModalProps> = ({
     setTimeout(() => setCopiedPix(false), 2500);
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     setIsProcessing(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsProcessing(false);
       if (tab === 'plans') {
         const planName =
@@ -74,12 +74,12 @@ export const MercadoPagoModal: React.FC<MercadoPagoModalProps> = ({
             : selectedPlan.id === 'pro'
             ? 'Pro'
             : 'Scale';
-        changePlan(planName, selectedPlan.creditsMonthly);
+        await changePlan(planName, selectedPlan.creditsMonthly);
         setPaymentSuccess(
           `Plano ${selectedPlan.name} ativado com sucesso! +${selectedPlan.creditsMonthly} créditos adicionados à sua conta.`
         );
       } else {
-        addCredits(selectedPackage.credits);
+        await addCredits(selectedPackage.credits, `Recarga de Pacote (${selectedPackage.name})`);
         setPaymentSuccess(
           `Recarga concluída! +${selectedPackage.credits} créditos foram adicionados ao seu saldo.`
         );

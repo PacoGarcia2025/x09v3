@@ -1,5 +1,51 @@
 export type ActiveView = 'landing' | 'studio' | 'dashboard';
 
+export type ProjectStatus =
+  | 'draft'
+  | 'interviewing'
+  | 'planning'
+  | 'designing'
+  | 'building'
+  | 'reviewing'
+  | 'published'
+  | 'archived';
+
+export type CreditTransactionType =
+  | 'welcome_bonus'
+  | 'purchase'
+  | 'subscription'
+  | 'generation'
+  | 'project_creation'
+  | 'template_clone'
+  | 'refund'
+  | 'adjustment';
+
+export interface CreditTransaction {
+  id: string;
+  userId: string;
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  type: CreditTransactionType;
+  description: string;
+  referenceId?: string;
+  createdAt: string;
+}
+
+export interface CreditEconomyConfig {
+  welcomeBonus: number;
+  projectCreationCost: number;
+  templateCloneCost: number;
+  aiCommandCost: number;
+}
+
+export const DEFAULT_CREDIT_ECONOMY: CreditEconomyConfig = {
+  welcomeBonus: 15,
+  projectCreationCost: 5,
+  templateCloneCost: 5,
+  aiCommandCost: 1,
+};
+
 export interface UserAccount {
   id: string;
   name: string;
@@ -47,16 +93,22 @@ export interface MercadoPagoPlan {
 export interface UserProject {
   id: string;
   userId: string;
+  ownerId?: string; // Supabase owner UUID
   title: string;
+  name?: string;
   slug: string;
   subdomain: string; // e.g. "fitlife" -> "fitlife.x09.com.br"
   customDomain?: string; // e.g. "fitlifeacademia.com.br"
   category: 'Sites' | 'SaaS' | 'Apps' | 'E-commerces';
-  status: 'published' | 'draft' | 'building';
+  status: ProjectStatus;
+  templateId?: string | null;
+  description?: string;
   views: number;
   lastEdited: string;
   thumbnail: string;
   data: FitLifeState;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ChatMessage {
