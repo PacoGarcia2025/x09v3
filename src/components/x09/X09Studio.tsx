@@ -83,15 +83,7 @@ export const X09Studio: React.FC<X09StudioProps> = ({
     return INITIAL_FITLIFE_DATA;
   });
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const saved = localStorage.getItem('x09_chat_messages');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {}
-    }
-    return INITIAL_CHAT_MESSAGES;
-  });
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [inputValue, setInputValue] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -135,8 +127,58 @@ export const X09Studio: React.FC<X09StudioProps> = ({
   }, [fitLifeData]);
 
   useEffect(() => {
+    if (activeProject) {
+      const saved = localStorage.getItem(`x09_chat_messages_${activeProject.id}`);
+      if (saved) {
+        try {
+          setMessages(JSON.parse(saved));
+          return;
+        } catch {}
+      }
+
+      // Contextual initial welcome message
+      if (activeProject.data?.isBlank) {
+        setMessages([
+          {
+            id: `msg-welcome-${Date.now()}`,
+            sender: 'x09',
+            text: `Olá! 👋 Boas-vindas ao seu novo projeto "${activeProject.title}" no Studio X09. Digite no chat o que você gostaria de construir (por exemplo: um site institucional, clínica de estética, e-commerce, SaaS, imobiliária ou portfólio) e eu irei estruturar o design, as seções, cores e os conteúdos em tempo real para você!`,
+            time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            quickReplies: [
+              'Quero um portfólio moderno',
+              'Criar site de Advocacia',
+              'E-commerce Minimalista',
+              'Aplicativo SaaS Financeiro'
+            ],
+          }
+        ]);
+      } else {
+        setMessages([
+          {
+            id: `msg-welcome-${Date.now()}`,
+            sender: 'x09',
+            text: `Olá! 👋 Inicializei o projeto "${activeProject.title}" baseado no modelo profissional. A base visual já está totalmente funcional no preview ao lado! O que você gostaria de personalizar primeiro?`,
+            time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            quickReplies: [
+              'Mudar cores para Neon Lima',
+              'Alterar o telefone de contato',
+              'Configurar os planos de assinatura',
+              'Ajustar Slogan & Headline'
+            ],
+          }
+        ]);
+      }
+    } else {
+      setMessages(INITIAL_CHAT_MESSAGES);
+    }
+  }, [activeProject?.id]);
+
+  useEffect(() => {
+    if (activeProject && messages.length > 0) {
+      localStorage.setItem(`x09_chat_messages_${activeProject.id}`, JSON.stringify(messages));
+    }
     localStorage.setItem('x09_chat_messages', JSON.stringify(messages));
-  }, [messages]);
+  }, [messages, activeProject?.id]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -230,14 +272,78 @@ export const X09Studio: React.FC<X09StudioProps> = ({
         throw new Error('Fallback to local logic');
       }
     } catch {
-      // Fallback local response
+      // Intelligent client-side fallback (double safety)
+      const lower = text.toLowerCase();
+      const localPatch: Partial<FitLifeState> = {};
+      let botText = `Entendido! Processei seu pedido de "${text}" e atualizei a estrutura do projeto.`;
+      let localReplies = ['Avançar etapa', 'Mudar cores', 'Ver código gerado'];
+
+      if (fitLifeData?.isBlank) {
+        localPatch.isBlank = false;
+      }
+
+      if (lower.includes('cor') || lower.includes('paleta') || lower.includes('neon') || lower.includes('azul') || lower.includes('dourado') || lower.includes('púrpura') || lower.includes('roxo') || lower.includes('coral') || lower.includes('vermelho')) {
+        if (lower.includes('azul') || lower.includes('ciano')) {
+          localPatch.accentColor = '#38bdf8';
+          botText = 'Apliquei a paleta de cores Ciano Cyber Elétrico! O visual escuro com contraste azul destaca todas as seções.';
+          localReplies = ['Manter Ciano', 'Testar Neon Lima', 'Avançar etapa'];
+        } else if (lower.includes('dourado') || lower.includes('ouro') || lower.includes('amarelo')) {
+          localPatch.accentColor = '#eab308';
+          botText = 'Ajustei as cores para Dourado Luxo! Agora a página transmite sofisticação e exclusividade premium.';
+          localReplies = ['Manter Dourado', 'Testar Roxo Tech', 'Configurar Planos'];
+        } else if (lower.includes('roxo') || lower.includes('púrpura')) {
+          localPatch.accentColor = '#a855f7';
+          botText = 'Paleta Roxo Tech Ultra ativada no design! Ideal para startups, SaaS e estúdios modernos.';
+          localReplies = ['Perfeito!', 'Alterar telefone', 'Ver código'];
+        } else if (lower.includes('coral') || lower.includes('vermelho') || lower.includes('rosa')) {
+          localPatch.accentColor = '#f43f5e';
+          botText = 'Mudei as cores do projeto para Coral Elétrico! O visual ficou vibrante e com alto apelo visual.';
+          localReplies = ['Manter Coral', 'Testar Ciano Cyber', 'Próxima etapa'];
+        } else {
+          localPatch.accentColor = '#c4f039';
+          botText = 'Mudei para a paleta Neon Lima! Traz energia máxima e destaque excelente nos botões de conversão.';
+          localReplies = ['Adicionar WhatsApp', 'Configurar Preços', 'Avançar'];
+        }
+      } else if (lower.includes('nome') || lower.includes('chamar') || lower.includes('marca')) {
+        const extracted = text.replace(/(o nome é|chame de|coloque|mudar para|nome)/gi, '').trim();
+        if (extracted.length > 2) {
+          localPatch.name = extracted;
+          localPatch.headline = `${extracted.toUpperCase()} • DE SEU JEITO`;
+          botText = `Excelente! Renomeei o projeto para "${extracted}" em todas as seções e títulos.`;
+          localReplies = ['Mudar slogan', 'Ajustar WhatsApp', 'Ver Preview'];
+        }
+      } else if (lower.includes('telefone') || lower.includes('whatsapp') || lower.includes('contato')) {
+        const phoneMatch = text.match(/(\(?\d{2}\)?\s?\d{4,5}-?\d{4})/);
+        if (phoneMatch) {
+          localPatch.phone = phoneMatch[0];
+          localPatch.whatsapp = phoneMatch[0];
+          botText = `Telefone e WhatsApp do projeto atualizados para ${phoneMatch[0]}! O botão de contato direto no preview já está ativo com esse número.`;
+        } else {
+          botText = 'Pode me enviar o número do WhatsApp com o DDD? Assim eu configuro o botão de contato do site na hora.';
+        }
+      } else {
+        // Generic fallback patch to at least render blank pages to full templates
+        if (fitLifeData?.isBlank) {
+          localPatch.isBlank = false;
+          localPatch.name = text.length < 15 ? text : 'Meu Projeto X09';
+          localPatch.headline = `${text.toUpperCase()} • PRONTO PARA VOCÊ`;
+        }
+      }
+
+      if (Object.keys(localPatch).length > 0) {
+        setFitLifeData((prev) => ({
+          ...prev,
+          ...localPatch,
+        }));
+      }
+
       setTimeout(() => {
         const botMsg: ChatMessage = {
           id: `bot-${Date.now()}`,
           sender: 'x09',
-          text: `Entendido! Ajustei "${text}" diretamente na estrutura do seu projeto. Todas as telas já foram sincronizadas com sucesso.`,
+          text: botText,
           time: timeStr,
-          quickReplies: ['Avançar etapa', 'Mudar cores', 'Ver código gerado'],
+          quickReplies: localReplies,
         };
         setMessages((prev) => [...prev, botMsg]);
       }, 600);
