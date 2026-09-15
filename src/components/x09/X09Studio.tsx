@@ -34,6 +34,7 @@ import {
   Sliders,
   ShieldAlert,
   Zap,
+  Flame,
 } from 'lucide-react';
 import {
   FitLifeState,
@@ -44,6 +45,7 @@ import { INITIAL_FITLIFE_DATA, INITIAL_CHAT_MESSAGES, SAMPLE_ASSETS } from '../.
 import { FitLifeLivePreview } from './FitLifeLivePreview';
 import { useAuth } from '../../context/AuthContext';
 import { X09Logo } from './X09Logo';
+import { MercadoPagoModal } from './MercadoPagoModal';
 
 interface X09StudioProps {
   onBackToLanding: () => void;
@@ -57,15 +59,21 @@ export const X09Studio: React.FC<X09StudioProps> = ({
   onOpenPublish,
 }) => {
   const {
+    user,
     activeProject,
     projects,
     setActiveProject,
     updateProject,
+    consumeCredits,
     integrations,
   } = useAuth();
+  const [showMercadoPagoModal, setShowMercadoPagoModal] = useState<boolean>(false);
   const [deviceView, setDeviceView] = useState<'desktop' | 'mobile'>('desktop');
   const [activeStep, setActiveStep] = useState<number>(1);
   const [fitLifeData, setFitLifeData] = useState<FitLifeState>(() => {
+    if (activeProject?.data) {
+      return activeProject.data;
+    }
     const saved = localStorage.getItem('x09_project_data');
     if (saved) {
       try {
@@ -87,7 +95,9 @@ export const X09Studio: React.FC<X09StudioProps> = ({
 
   const [inputValue, setInputValue] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
-  const [activeProjectTitle, setActiveProjectTitle] = useState<string>('FitLife – Academia Premium');
+  const [activeProjectTitle, setActiveProjectTitle] = useState<string>(
+    activeProject?.title || 'Novo Projeto'
+  );
   const [showProjectDropdown, setShowProjectDropdown] = useState<boolean>(false);
   const [activeSidebarNav, setActiveSidebarNav] = useState<string>('projetos');
   const [showFullPreviewModal, setShowFullPreviewModal] = useState<boolean>(false);
@@ -101,7 +111,20 @@ export const X09Studio: React.FC<X09StudioProps> = ({
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Sync active project data changes
   useEffect(() => {
+    if (activeProject) {
+      setActiveProjectTitle(activeProject.title);
+      if (activeProject.data) {
+        setFitLifeData(activeProject.data);
+      }
+    }
+  }, [activeProject?.id]);
+
+  useEffect(() => {
+    if (activeProject && fitLifeData) {
+      updateProject(activeProject.id, { data: fitLifeData });
+    }
     localStorage.setItem('x09_project_data', JSON.stringify(fitLifeData));
   }, [fitLifeData]);
 
@@ -137,6 +160,23 @@ export const X09Studio: React.FC<X09StudioProps> = ({
 
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    // Check credits before processing
+    if (user && user.credits <= 0) {
+      const outOfCreditsMsg: ChatMessage = {
+        id: `bot-${Date.now()}`,
+        sender: 'x09',
+        text: '⚠️ Seus créditos do Studio X09 acabaram! Para continuar solicitando alterações à IA e gerando código, recarregue seus créditos com Mercado Pago (PIX ou Cartão).',
+        time: timeStr,
+        quickReplies: ['Comprar Créditos (PIX)', 'Ver Planos Mensais'],
+      };
+      setMessages((prev) => [...prev, outOfCreditsMsg]);
+      setShowMercadoPagoModal(true);
+      return;
+    }
+
+    // Deduct 1 credit per AI interaction
+    consumeCredits(1, 'Alteração via Inteligência Artificial');
 
     const newMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -439,6 +479,19 @@ export default {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Studio Credits Pill with Mercado Pago Recharge */}
+          <button
+            onClick={() => setShowMercadoPagoModal(true)}
+            className="px-2.5 py-1 rounded-xl bg-purple-950/60 border border-purple-500/40 hover:border-purple-400 text-xs font-bold text-purple-200 flex items-center gap-1.5 transition-all shadow-sm group"
+            title="Saldo de créditos da IA - clique para recarregar via Mercado Pago"
+          >
+            <Flame className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+            <span>{user?.credits ?? 0} Créditos</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/30 text-purple-200 font-semibold group-hover:bg-purple-500 group-hover:text-white transition-colors">
+              + Recarregar
+            </span>
+          </button>
+
           <button
             onClick={onBackToLanding}
             className="text-xs text-zinc-400 hover:text-zinc-200 px-2.5 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700 hidden lg:inline-flex items-center gap-1.5"
@@ -1261,6 +1314,13 @@ export default {
           </div>
         </div>
       )}
+
+      {/* MERCADO PAGO MODAL INSIDE STUDIO */}
+      <MercadoPagoModal
+        isOpen={showMercadoPagoModal}
+        onClose={() => setShowMercadoPagoModal(false)}
+        defaultTab="packages"
+      />
     </div>
   );
 };

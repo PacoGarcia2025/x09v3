@@ -6,9 +6,42 @@ export interface UserAccount {
   email: string;
   avatar?: string;
   role: 'admin' | 'creator';
-  plan: 'Starter' | 'Pro' | 'Enterprise';
+  plan: 'Free' | 'Starter' | 'Pro' | 'Scale';
+  credits: number;
+  creditsTotal: number;
   createdAt: string;
   supabaseConnected?: boolean;
+}
+
+export interface X09Template {
+  id: string;
+  title: string;
+  category: 'Sites' | 'SaaS' | 'Apps' | 'E-commerces';
+  badge: string;
+  description: string;
+  thumbnail: string;
+  suggestedSubdomain: string;
+  features: string[];
+  data: FitLifeState;
+}
+
+export interface CreditPackage {
+  id: string;
+  name: string;
+  credits: number;
+  priceBrl: number;
+  badge?: string;
+  description: string;
+}
+
+export interface MercadoPagoPlan {
+  id: 'starter' | 'pro' | 'scale';
+  name: string;
+  priceMonthly: number;
+  creditsMonthly: number;
+  badge?: string;
+  popular?: boolean;
+  features: string[];
 }
 
 export interface UserProject {

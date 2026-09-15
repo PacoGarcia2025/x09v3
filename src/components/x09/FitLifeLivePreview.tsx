@@ -288,37 +288,54 @@ export const FitLifeLivePreview: React.FC<FitLifeLivePreviewProps> = ({
               </button>
             </div>
 
-            <div className={`grid gap-4 ${isMobileLayout ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
-              {data.modalities.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => setSelectedModality(item)}
-                  className="group relative rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer shadow-md"
-                >
-                  <div className="h-32 sm:h-40 overflow-hidden relative">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent"></div>
-                  </div>
-                  <div className="p-3.5">
-                    <h3 className="font-black text-white text-xs sm:text-sm tracking-wide mb-1 flex items-center justify-between">
-                      <span>{item.title}</span>
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accent }}></span>
-                    </h3>
-                    <p className="text-zinc-400 text-[11px] line-clamp-2 leading-relaxed mb-2">
-                      {item.description}
-                    </p>
-                    <span className="text-[10px] font-bold flex items-center gap-1 text-zinc-300 group-hover:text-white">
-                      <span>Ver detalhes</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </span>
-                  </div>
+            {data.modalities.length === 0 ? (
+              <div className="p-8 sm:p-12 rounded-2xl bg-zinc-900/50 border border-zinc-800/80 text-center flex flex-col items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-3">
+                  <Sparkles className="w-6 h-6 animate-pulse" />
                 </div>
-              ))}
-            </div>
+                <h3 className="font-bold text-white text-base mb-1">
+                  Tela em Branco • {data.name}
+                </h3>
+                <p className="text-xs text-zinc-400 max-w-md mb-4 leading-relaxed">
+                  Este projeto foi iniciado 100% do zero. Converse com o Assistente de IA no chat ao lado para gerar novas seções, catálogo de produtos, páginas ou integrações.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-purple-300 font-mono bg-purple-950/40 px-3 py-1.5 rounded-lg border border-purple-800/40">
+                  <span>Dica: "Crie uma seção de serviços em 3 colunas com botões de contato"</span>
+                </div>
+              </div>
+            ) : (
+              <div className={`grid gap-4 ${isMobileLayout ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
+                {data.modalities.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedModality(item)}
+                    className="group relative rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer shadow-md"
+                  >
+                    <div className="h-32 sm:h-40 overflow-hidden relative">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent"></div>
+                    </div>
+                    <div className="p-3.5">
+                      <h3 className="font-black text-white text-xs sm:text-sm tracking-wide mb-1 flex items-center justify-between">
+                        <span>{item.title}</span>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accent }}></span>
+                      </h3>
+                      <p className="text-zinc-400 text-[11px] line-clamp-2 leading-relaxed mb-2">
+                        {item.description}
+                      </p>
+                      <span className="text-[10px] font-bold flex items-center gap-1 text-zinc-300 group-hover:text-white">
+                        <span>Ver detalhes</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Highlights & Quick CTA */}
