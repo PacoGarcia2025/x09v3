@@ -8,6 +8,8 @@ import {
   Monitor,
   Smartphone,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Plus,
   FolderKanban,
   LayoutTemplate,
@@ -95,6 +97,10 @@ export const X09Studio: React.FC<X09StudioProps> = ({
   const [showFullPreviewModal, setShowFullPreviewModal] = useState<boolean>(false);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [selectedCodeFile, setSelectedCodeFile] = useState<'app' | 'html' | 'tailwind' | 'package'>('app');
+  
+  // Custom workspace and sidebar controls
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [showMobileOverlay, setShowMobileOverlay] = useState<boolean>(true);
 
   // New Project Modal State
   const [showNewProjectModal, setShowNewProjectModal] = useState<boolean>(false);
@@ -102,6 +108,7 @@ export const X09Studio: React.FC<X09StudioProps> = ({
   const [newProjectSegment, setNewProjectSegment] = useState<string>('Academia & Esporte');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Inspector click-to-edit adapter
   const handleSelectElement = (elementName: string, currentValue: string) => {
@@ -181,6 +188,9 @@ export const X09Studio: React.FC<X09StudioProps> = ({
   }, [messages, activeProject?.id]);
 
   useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
@@ -465,7 +475,7 @@ export default {
   };
 
   return (
-    <div className="min-h-screen bg-[#070908] text-zinc-100 flex flex-col font-sans selection:bg-purple-500/30 selection:text-purple-200">
+    <div className="h-screen overflow-hidden bg-[#070908] text-zinc-100 flex flex-col font-sans selection:bg-purple-500/30 selection:text-purple-200">
       {/* 1. TOP HEADER BAR matching reference */}
       <header className="h-14 bg-[#0a0d0c] border-b border-zinc-800/80 px-4 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-3">
@@ -658,30 +668,32 @@ export default {
       {/* 2. BODY: LEFT SIDEBAR + SPLIT WORKSPACE */}
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT SIDEBAR */}
-        <aside className="w-56 bg-[#090c0b] border-r border-zinc-800/80 flex flex-col justify-between p-3 hidden md:flex shrink-0">
+        <aside className={`${isSidebarCollapsed ? 'w-16' : 'w-56'} bg-[#090c0b] border-r border-zinc-800/80 flex flex-col justify-between p-3 hidden md:flex shrink-0 transition-all duration-300 relative`}>
           <div>
             <button
               onClick={() => setShowNewProjectModal(true)}
               className="w-full py-2 px-3 rounded-full text-xs font-bold text-purple-300 bg-purple-950/40 border border-purple-500/40 hover:bg-purple-900/40 transition-all flex items-center justify-center gap-2 mb-4 shadow-sm"
+              title="Novo projeto"
             >
-              <Plus className="w-4 h-4 text-purple-400" />
-              <span>Novo projeto</span>
+              <Plus className="w-4 h-4 text-purple-400 shrink-0" />
+              {!isSidebarCollapsed && <span>Novo projeto</span>}
             </button>
 
-            <nav className="space-y-0.5 text-xs font-medium">
+            <nav className="space-y-1 text-xs font-medium">
               <button
                 onClick={() => {
                   setActiveSidebarNav('projetos');
                   setActiveStep(1);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
+                className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-1' : 'gap-2.5 px-3'} py-2 rounded-lg text-left transition-all ${
                   activeSidebarNav === 'projetos'
                     ? 'bg-zinc-800 text-white font-semibold'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
+                title="Meus projetos"
               >
-                <FolderKanban className="w-4 h-4 text-purple-400" />
-                <span>Meus projetos</span>
+                <FolderKanban className="w-4 h-4 text-purple-400 shrink-0" />
+                {!isSidebarCollapsed && <span>Meus projetos</span>}
               </button>
 
               <button
@@ -689,14 +701,15 @@ export default {
                   setActiveSidebarNav('planejamento');
                   setActiveStep(2);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
+                className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-1' : 'gap-2.5 px-3'} py-2 rounded-lg text-left transition-all ${
                   activeStep === 2
                     ? 'bg-zinc-800 text-white font-semibold'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
+                title="Planejamento"
               >
-                <LayoutTemplate className="w-4 h-4 text-zinc-400" />
-                <span>Planejamento</span>
+                <LayoutTemplate className="w-4 h-4 text-zinc-400 shrink-0" />
+                {!isSidebarCollapsed && <span>Planejamento</span>}
               </button>
 
               <button
@@ -704,14 +717,15 @@ export default {
                   setActiveSidebarNav('design');
                   setActiveStep(3);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
+                className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-1' : 'gap-2.5 px-3'} py-2 rounded-lg text-left transition-all ${
                   activeStep === 3
                     ? 'bg-zinc-800 text-white font-semibold'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
+                title="Design System"
               >
-                <Palette className="w-4 h-4 text-zinc-400" />
-                <span>Design System</span>
+                <Palette className="w-4 h-4 text-zinc-400 shrink-0" />
+                {!isSidebarCollapsed && <span>Design System</span>}
               </button>
 
               <button
@@ -719,14 +733,15 @@ export default {
                   setActiveSidebarNav('construcao');
                   setActiveStep(4);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
+                className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-1' : 'gap-2.5 px-3'} py-2 rounded-lg text-left transition-all ${
                   activeStep === 4
                     ? 'bg-zinc-800 text-white font-semibold'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
+                title="Código & Build"
               >
-                <Code className="w-4 h-4 text-zinc-400" />
-                <span>Código & Build</span>
+                <Code className="w-4 h-4 text-zinc-400 shrink-0" />
+                {!isSidebarCollapsed && <span>Código & Build</span>}
               </button>
 
               <button
@@ -734,59 +749,83 @@ export default {
                   setActiveSidebarNav('revisao');
                   setActiveStep(5);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
+                className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-1' : 'gap-2.5 px-3'} py-2 rounded-lg text-left transition-all ${
                   activeStep === 5
                     ? 'bg-zinc-800 text-white font-semibold'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
+                title="Auditoria QA"
               >
-                <ShieldAlert className="w-4 h-4 text-zinc-400" />
-                <span>Auditoria QA</span>
+                <ShieldAlert className="w-4 h-4 text-zinc-400 shrink-0" />
+                {!isSidebarCollapsed && <span>Auditoria QA</span>}
               </button>
 
               <button
                 onClick={onOpenPublish}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-1' : 'gap-2.5 px-3'} py-2 rounded-lg text-left transition-all text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900`}
+                title="Publicar (VPS/Git)"
               >
-                <Rocket className="w-4 h-4 text-purple-400" />
-                <span>Publicar (VPS/Git)</span>
+                <Rocket className="w-4 h-4 text-purple-400 shrink-0" />
+                {!isSidebarCollapsed && <span>Publicar (VPS/Git)</span>}
               </button>
             </nav>
           </div>
 
           <div className="space-y-3 pt-3 border-t border-zinc-900">
-            <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-white">Plano Profissional</span>
-                <span className="text-[10px] text-purple-400 font-semibold">Ativo</span>
-              </div>
-              <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden mb-2">
-                <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-full w-[24%]"></div>
-              </div>
-              <div className="flex items-center justify-between text-[10px] text-zinc-400">
-                <span>12/50 projetos</span>
-                <button
-                  onClick={onOpenPublish}
-                  className="text-purple-400 hover:text-purple-300 font-semibold"
-                >
-                  Upgrade ➔
-                </button>
-              </div>
-            </div>
+            {/* Collapse / Expand Toggle Button */}
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="w-full py-1.5 px-2 rounded-lg bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 text-[11px] text-zinc-400 hover:text-white font-semibold transition-all flex items-center justify-center gap-1.5 shadow-sm"
+              title={isSidebarCollapsed ? 'Expandir Menu' : 'Recolher Menu'}
+            >
+              {isSidebarCollapsed ? (
+                <ChevronRight className="w-4 h-4 text-purple-400" />
+              ) : (
+                <>
+                  <ChevronLeft className="w-4 h-4 text-purple-400" />
+                  <span>Recolher Menu</span>
+                </>
+              )}
+            </button>
 
-            <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-900/40 border border-zinc-900">
+            {!isSidebarCollapsed && (
+              <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 transition-opacity">
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-bold text-white text-[11px]">Plano Profissional</span>
+                  <span className="text-[10px] text-purple-400 font-semibold">Ativo</span>
+                </div>
+                <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden mb-2">
+                  <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-full w-[24%]"></div>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                  <span>12/50 projetos</span>
+                  <button
+                    onClick={onOpenPublish}
+                    className="text-purple-400 hover:text-purple-300 font-semibold"
+                  >
+                    Upgrade ➔
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className={`flex items-center justify-between ${isSidebarCollapsed ? 'p-1 justify-center' : 'p-2'} rounded-lg bg-zinc-900/40 border border-zinc-900`}>
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                   SG
                 </div>
-                <div className="text-left">
-                  <div className="text-xs font-bold text-white leading-tight">Sérgio Garcia</div>
-                  <div className="text-[10px] text-zinc-500">Minha conta</div>
-                </div>
+                {!isSidebarCollapsed && (
+                  <div className="text-left">
+                    <div className="text-xs font-bold text-white leading-tight">Sérgio Garcia</div>
+                    <div className="text-[10px] text-zinc-500">Minha conta</div>
+                  </div>
+                )}
               </div>
-              <button className="text-zinc-500 hover:text-zinc-300">
-                <MoreVertical className="w-3.5 h-3.5" />
-              </button>
+              {!isSidebarCollapsed && (
+                <button className="text-zinc-500 hover:text-zinc-300">
+                  <MoreVertical className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
         </aside>
@@ -815,7 +854,7 @@ export default {
                     </button>
                   </div>
 
-                  <div className="flex-1 p-4 overflow-y-auto space-y-4 custom-scrollbar">
+                  <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 custom-scrollbar">
                     {messages.map((msg) => {
                       const isBot = msg.sender === 'x09';
                       return (
@@ -957,12 +996,16 @@ export default {
 
                   <div className="space-y-2.5 text-xs">
                     {[
-                      { title: 'Início (Hero & Proposta de Valor)', status: 'Ativo', desc: 'Apresentação com CTA principal e estatísticas de alunos.' },
-                      { title: 'Modalidades & Treinos', status: 'Ativo', desc: 'Cards com descrição das aulas, tempo e gasto calórico.' },
-                      { title: 'Planos & Checkout Online', status: 'Ativo', desc: 'Tabela de preços mensal/anual com formulário e modal PIX.' },
-                      { title: 'Agendamento de Aula Grátis', status: 'Ativo', desc: 'Formulário com seletor de horários e emissão de voucher.' },
-                      { title: 'Calculadora de IMC & Biofísica', status: 'Ativo', desc: 'Ferramenta interativa para engajamento e conversão.' },
-                      { title: 'Depoimentos & Prova Social', status: 'Ativo', desc: 'Avaliações de alunos com nota 5 estrelas e fotos reais.' },
+                      { title: 'Início (Hero & Proposta de Valor)', status: 'Ativo', desc: `Apresenta o slogan "${fitLifeData.slogan}" e a manchete principal "${fitLifeData.headline}".` },
+                      ...fitLifeData.modalities.map(mod => ({
+                        title: `Módulo de Modalidade: ${mod.title}`,
+                        status: 'Ativo',
+                        desc: mod.description
+                      })),
+                      { title: 'Calculadora de IMC & Biofísica', status: 'Ativo', desc: 'Módulo interativo de fitness integrado para retenção de leads.' },
+                      { title: 'Planos & Checkout Online', status: 'Ativo', desc: `Estratégia de preços vinculada ao gatilho de ação com contato via WhatsApp ${fitLifeData.phone}.` },
+                      { title: 'Agendamento de Aula Grátis', status: 'Ativo', desc: `Formulário integrado com envio de voucher para o WhatsApp.` },
+                      { title: 'Rodapé & Localização', status: 'Ativo', desc: `Seção de contato contendo o e-mail oficial e mídias de rede social.` }
                     ].map((section, idx) => (
                       <div
                         key={idx}
@@ -982,8 +1025,8 @@ export default {
                   </div>
 
                   <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-800/40 text-xs text-purple-200">
-                    <span className="font-bold text-white block mb-1">Estratégia de Conversão:</span>
-                    O funil foi desenhado para captar contatos via WhatsApp e agendamentos de aula experimental no primeiro scroll.
+                    <span className="font-bold text-white block mb-1">Estratégia de Conversão Personalizada:</span>
+                    O funil do projeto <strong className="text-purple-300">{fitLifeData.name}</strong> foi desenhado para captar contatos via WhatsApp ({fitLifeData.whatsapp}) e agendamentos de aula experimental no primeiro scroll, utilizando a cor de destaque principal ({fitLifeData.accentColor}) para maximizar os cliques no Call-to-Action.
                   </div>
 
                   <div className="flex gap-2">
@@ -1177,13 +1220,16 @@ export default {
                     </div>
                   </div>
 
-                  <div className="space-y-2 text-xs">
+                   <div className="space-y-2 text-xs">
                     {[
-                      'Tempo de carregamento inicial (FCP): 0.4s',
-                      'Totalmente responsivo em Smartphones e Tablets',
-                      'Tags OpenGraph configuradas para WhatsApp e Redes',
-                      'Imagens otimizadas em WebP com lazy-loading',
-                      'Pronto para SSL Let\'s Encrypt na VPS Hostinger',
+                      `Análise de FCP (First Contentful Paint): 0.4s (Excelente)`,
+                      `Nome do projeto "${fitLifeData.name}" configurado como o título principal do site`,
+                      `Botão de WhatsApp apontando para o número ativo ${fitLifeData.whatsapp || fitLifeData.phone}`,
+                      `Paleta de cores usando o tom de destaque ${fitLifeData.accentColor} em alto contraste WCAG`,
+                      `Total de ${fitLifeData.modalities.length} modalidades esportivas cadastradas com imagens de alta qualidade`,
+                      `Estratégia de SEO: Meta descrições sincronizadas com "${fitLifeData.headline || fitLifeData.slogan}"`,
+                      `Totalmente responsivo em Smartphones e Tablets`,
+                      `Pronto para SSL Let's Encrypt e Deploy Hostinger VPS`,
                     ].map((item, i) => (
                       <div key={i} className="flex items-center gap-2 text-zinc-300 p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1227,6 +1273,20 @@ export default {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {deviceView === 'desktop' && (
+                    <button
+                      onClick={() => setShowMobileOverlay(!showMobileOverlay)}
+                      className={`text-[11px] px-2.5 py-1 rounded border flex items-center gap-1 font-semibold transition-colors ${
+                        showMobileOverlay
+                          ? 'bg-purple-950/60 text-purple-300 border-purple-500/40 hover:bg-purple-900/60'
+                          : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                      }`}
+                      title={showMobileOverlay ? "Ocultar celular flutuante" : "Mostrar celular flutuante"}
+                    >
+                      <Smartphone className="w-3 h-3 text-purple-400" />
+                      <span>{showMobileOverlay ? 'Celular On' : 'Celular Off'}</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setFitLifeData(INITIAL_FITLIFE_DATA);
@@ -1253,7 +1313,7 @@ export default {
                   <FitLifeLivePreview
                     data={fitLifeData}
                     deviceMode={deviceView}
-                    showDualPreview={deviceView === 'desktop'}
+                    showDualPreview={deviceView === 'desktop' && showMobileOverlay}
                     onSelectElement={handleSelectElement}
                   />
                 </div>
